@@ -1,185 +1,117 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import PageTitle from "../components/PageTitle";
 import { sites } from "../data/dummyData";
+import { logout } from "../utils/logout";
+import Button from "../components/Button";
+import { showError } from "../utils/showError";
+import { showSuccess } from "../utils/showSuccess";
+import SkeletonBox from "../components/SkeletonBox";
+import EmptyState from "../components/EmptyState";
 
 function Engineer() {
   const navigate = useNavigate();
 
+  const [pageLoading, setPageLoading] = useState(true);
   const [selectedSite, setSelectedSite] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [currentWeek, setCurrentWeek] = useState(1);
 
-  // Change task status (Done / Pending / Cancelled)
-  const updateTaskStatus = (taskId, newStatus) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === taskId
-        ? { ...task, status: newStatus }
-        : task
-    );
-    setTasks(updatedTasks);
-  };
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [weekLoading, setWeekLoading] = useState(false);
 
-  // Update note for a task
-  const updateTaskNote = (taskId, note) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === taskId
-        ? { ...task, note }
-        : task
-    );
-    setTasks(updatedTasks);
-  };
+  useEffect(() => {
+    const t = setTimeout(() => setPageLoading(false), 600);
+    return () => clearTimeout(t);
+  }, []);
 
-  // Decide card color based on task status
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case "DONE":
-        return { backgroundColor: "#dcfce7", borderColor: "#22c55e" };
-      case "PENDING":
-        return { backgroundColor: "#fef9c3", borderColor: "#eab308" };
-      case "CANCELLED":
-        return { backgroundColor: "#e5e7eb", borderColor: "#9ca3af" };
-      default:
-        return { backgroundColor: "#f9fafb", borderColor: "#d1d5db" };
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await logout();
+      showSuccess("Logged out");
+      navigate("/login", { replace: true });
+    } catch (e) {
+      showError(e, "Logout failed");
+      setLoggingOut(false);
     }
   };
 
-  // Simulate next week (carry-forward logic)
-  const goToNextWeek = () => {
-    const updatedTasks = tasks.map(task => {
-      if (task.status === "PENDING") {
-        return {
-          ...task,
-          pendingWeeks: (task.pendingWeeks || 0) + 1
-        };
-      }
-      return task;
-    });
+  const goToNextWeek = async () => {
+    setWeekLoading(true);
+    await new Promise(r => setTimeout(r, 400));
 
-    setTasks(updatedTasks);
-    setCurrentWeek(currentWeek + 1);
+    setTasks(tasks.map(t =>
+      t.status === "PENDING"
+        ? { ...t, pendingWeeks: (t.pendingWeeks || 0) + 1 }
+        : t
+    ));
+    setCurrentWeek(w => w + 1);
+    setWeekLoading(false);
   };
 
   return (
     <Layout>
-      <PageTitle
-        title="Engineer Dashboard"
-        role="Engineer"
-        showBack={true}
-        onBack={() => {
-          if (selectedSite) {
-            setSelectedSite(null);
-            setCurrentWeek(1);
-          } else {
-            navigate("/");
-          }
-        }}
-      />
+      <PageTitle title="Engineer Dashboard" role="Engineer" showBack />
 
-      {/* SITE LIST */}
-      {!selectedSite && (
+      <div style={{ textAlign: "right", marginBottom: 10 }}>
+        <Button loading={loggingOut} onClick={handleLogout}>
+          Logout
+        </Button>
+      </div>
+
+      {!selectedSite && pageLoading && (
+        <>
+          <SkeletonBox />
+          <SkeletonBox />
+        </>
+      )}
+
+      {!selectedSite && !pageLoading && sites.length === 0 && (
+        <EmptyState
+          title="No sites assigned"
+          subtitle="Please wait for admin to assign you a site"
+        />
+      )}
+
+      {!selectedSite && !pageLoading && sites.length > 0 && (
         <div>
           <h4>Assigned Sites</h4>
-
           {sites.map(site => (
             <div
               key={site.id}
-              style={{
-                border: "1px solid #ddd",
-                padding: 12,
-                marginBottom: 10,
-                cursor: "pointer"
-              }}
+              style={{ border: "1px solid #ddd", padding: 12 }}
               onClick={() => {
                 setSelectedSite(site);
-                setTasks(
-                  site.tasks.map(task => ({
-                    ...task,
-                    pendingWeeks: task.pendingWeeks || 0
-                  }))
-                );
+                setTasks(site.tasks);
                 setCurrentWeek(1);
               }}
             >
-              <strong>{site.name}</strong>
+              {site.name}
             </div>
           ))}
         </div>
       )}
 
-      {/* TASK LIST */}
       {selectedSite && (
         <div>
           <h4>{selectedSite.name}</h4>
 
-          {/* WEEK CONTROLS */}
-          <div style={{ marginBottom: 12 }}>
-            <strong>Week:</strong> {currentWeek}
-            <button
-              onClick={goToNextWeek}
-              style={{ marginLeft: 10 }}
-            >
-              Next Week →
-            </button>
-          </div>
+          <Button loading={weekLoading} onClick={goToNextWeek}>
+            Next Week →
+          </Button>
+
+          {tasks.length === 0 && (
+            <EmptyState
+              title="No tasks available"
+              subtitle="Admin has not added tasks yet"
+            />
+          )}
 
           {tasks.map(task => (
-            <div
-              key={task.id}
-              style={{
-                border: "1px solid",
-                padding: 10,
-                marginBottom: 8,
-                ...getStatusStyle(task.status)
-              }}
-            >
-              <strong>{task.title}</strong>
-              <div>Status: {task.status}</div>
-
-              {task.status === "PENDING" && task.pendingWeeks > 0 && (
-                <div style={{ fontSize: 12, color: "#92400e" }}>
-                  Pending since {task.pendingWeeks} week(s)
-                </div>
-              )}
-
-              {/* STATUS BUTTONS */}
-              <div style={{ marginTop: 6 }}>
-                <button onClick={() => updateTaskStatus(task.id, "DONE")}>
-                  Done
-                </button>
-
-                <button
-                  onClick={() => updateTaskStatus(task.id, "PENDING")}
-                  style={{ marginLeft: 6 }}
-                >
-                  Pending
-                </button>
-
-                <button
-                  onClick={() => updateTaskStatus(task.id, "CANCELLED")}
-                  style={{ marginLeft: 6 }}
-                >
-                  Cancel
-                </button>
-              </div>
-
-              {/* NOTES */}
-              <div style={{ marginTop: 8 }}>
-                <textarea
-                  placeholder="Add note (why pending / what done)"
-                  value={task.note || ""}
-                  onChange={(e) =>
-                    updateTaskNote(task.id, e.target.value)
-                  }
-                  rows={2}
-                  style={{
-                    width: "100%",
-                    padding: 6,
-                    fontSize: 12
-                  }}
-                />
-              </div>
+            <div key={task.id} style={{ border: "1px solid", padding: 8 }}>
+              {task.title}
             </div>
           ))}
         </div>

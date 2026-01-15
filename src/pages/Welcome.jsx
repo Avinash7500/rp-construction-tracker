@@ -1,22 +1,32 @@
-import { useNavigate } from "react-router-dom";
-import Layout from "../components/Layout";
-import PageTitle from "../components/PageTitle";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import toast from "react-hot-toast";
 
 function Welcome() {
-  const navigate = useNavigate();
+  const { user, role, loading } = useAuth();
 
-  return (
-    <Layout>
-      <PageTitle title="Welcome" />
+  if (loading) {
+    return <div style={{ padding: 24 }}>Loading...</div>; 
+  }
 
-      <p>Select your role</p>
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
-      <button onClick={() => navigate("/admin")}>Admin</button>
-      <button onClick={() => navigate("/engineer")} style={{ marginLeft: 10 }}>
-        Engineer
-      </button>
-    </Layout>
-  );
+  if (role === "ADMIN") {
+    return <Navigate to="/admin" replace />;
+  }
+
+  if (role === "ENGINEER") {
+    return <Navigate to="/engineer" replace />;
+  }
+
+  if (user && !role) {
+  toast.error("Your account is not properly configured");
+  return <Navigate to="/login" replace />;
+  }
+
+  return <Navigate to="/login" replace />;
 }
 
 export default Welcome;

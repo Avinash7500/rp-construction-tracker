@@ -1,30 +1,58 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import PageTitle from "../components/PageTitle";
 import { sites } from "../data/dummyData";
+import { logout } from "../utils/logout";
+import Button from "../components/Button";
+import { showError } from "../utils/showError";
+import { showSuccess } from "../utils/showSuccess";
+import SkeletonBox from "../components/SkeletonBox";
+import EmptyState from "../components/EmptyState";
 
 function Admin() {
   const navigate = useNavigate();
 
+  const [pageLoading, setPageLoading] = useState(true);
+
   const [selectedSite, setSelectedSite] = useState(null);
   const [tasks, setTasks] = useState([]);
 
-  // Add task
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("NORMAL");
 
-  // Completion flow
   const [completedSites, setCompletedSites] = useState([]);
   const [showCompleteFlow, setShowCompleteFlow] = useState(false);
   const [appreciation, setAppreciation] = useState("");
   const [confirmComplete, setConfirmComplete] = useState(false);
 
-  // Task filter
   const [taskFilter, setTaskFilter] = useState("ALL");
 
-  const addTask = () => {
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [addingTask, setAddingTask] = useState(false);
+  const [completingSite, setCompletingSite] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setPageLoading(false), 600);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await logout();
+      showSuccess("Logged out");
+      navigate("/login", { replace: true });
+    } catch (e) {
+      showError(e, "Logout failed");
+      setLoggingOut(false);
+    }
+  };
+
+  const addTask = async () => {
     if (!newTaskTitle.trim()) return;
+    setAddingTask(true);
+    await new Promise(r => setTimeout(r, 400));
 
     setTasks([
       ...tasks,
@@ -39,20 +67,18 @@ function Admin() {
 
     setNewTaskTitle("");
     setNewTaskPriority("NORMAL");
+    setAddingTask(false);
   };
 
-  const deleteTask = (taskId) => {
-    setTasks(tasks.filter(t => t.id !== taskId));
-  };
+  const completeSiteFinally = async () => {
+    if (!confirmComplete) return;
 
-  const completeSiteFinally = () => {
+    setCompletingSite(true);
+    await new Promise(r => setTimeout(r, 500));
+
     setCompletedSites([
       ...completedSites,
-      {
-        ...selectedSite,
-        tasks,
-        appreciation
-      }
+      { ...selectedSite, tasks, appreciation }
     ]);
 
     setSelectedSite(null);
@@ -60,188 +86,110 @@ function Admin() {
     setAppreciation("");
     setShowCompleteFlow(false);
     setConfirmComplete(false);
+    setCompletingSite(false);
+
+    showSuccess("Site completed successfully");
   };
 
-  const visibleTasks = tasks.filter(task => {
-    if (taskFilter === "ALL") return true;
-    return task.status === taskFilter;
-  });
+  const visibleTasks = tasks.filter(t =>
+    taskFilter === "ALL" ? true : t.status === taskFilter
+  );
 
   return (
     <Layout>
-      <PageTitle
-        title="Admin Dashboard"
-        role="Admin"
-        showBack={true}
-        onBack={() => {
-          if (showCompleteFlow) {
-            setShowCompleteFlow(false);
-            setConfirmComplete(false);
-          } else if (selectedSite) {
-            setSelectedSite(null);
-            setTasks([]);
-          } else {
-            navigate("/");
-          }
-        }}
-      />
+      <PageTitle title="Admin Dashboard" role="Admin" showBack />
+
+      <div style={{ textAlign: "right", marginBottom: 10 }}>
+        <Button loading={loggingOut} onClick={handleLogout}>
+          Logout
+        </Button>
+      </div>
 
       {/* ACTIVE SITES */}
-      {!selectedSite && (
+      {!selectedSite && pageLoading && (
+        <>
+          <SkeletonBox />
+          <SkeletonBox />
+          <SkeletonBox />
+        </>
+      )}
+
+      {!selectedSite && !pageLoading && sites.length === 0 && (
+        <EmptyState
+          title="No active sites"
+          subtitle="Create or assign a site to get started"
+        />
+      )}
+
+      {!selectedSite && !pageLoading && sites.length > 0 && (
         <div>
           <h4>Active Sites</h4>
           {sites.map(site => (
             <div
               key={site.id}
-              style={{
-                border: "1px solid #ddd",
-                padding: 12,
-                marginBottom: 10,
-                cursor: "pointer"
-              }}
+              style={{ border: "1px solid #ddd", padding: 12, marginBottom: 10 }}
               onClick={() => {
                 setSelectedSite(site);
                 setTasks(site.tasks);
               }}
             >
               <strong>{site.name}</strong>
-              <div style={{ fontSize: 12 }}>
-                Engineer: {site.engineer}
-              </div>
+              <div style={{ fontSize: 12 }}>Engineer: {site.engineer}</div>
             </div>
           ))}
         </div>
       )}
 
-      {/* COMPLETED SITES */}
-      {!selectedSite && completedSites.length > 0 && (
-        <div style={{ marginTop: 30 }}>
-          <h4>Completed Sites (History)</h4>
-          {completedSites.map(site => (
-            <div
-              key={site.id}
-              style={{
-                backgroundColor: "#ecfdf5",
-                border: "1px solid #22c55e",
-                padding: 12,
-                marginBottom: 10
-              }}
-            >
-              <strong>{site.name}</strong>
-              <div style={{ fontSize: 12 }}>
-                Engineer: {site.engineer}
-              </div>
-              <div style={{ fontSize: 12, marginTop: 6 }}>
-                🎉 Congratulations to {site.engineer} & RP Construction
-              </div>
-              {site.appreciation && (
-                <div style={{ fontSize: 12, marginTop: 4 }}>
-                  Appreciation: {site.appreciation}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* SITE DETAILS */}
+      {/* TASKS */}
       {selectedSite && !showCompleteFlow && (
         <div>
           <h4>{selectedSite.name}</h4>
-          <p>Engineer: {selectedSite.engineer}</p>
 
-          {/* COMPLETE SITE BUTTON */}
-          <button
-            onClick={() => setShowCompleteFlow(true)}
-            style={{
-              marginBottom: 15,
-              backgroundColor: "#22c55e",
-              color: "#fff",
-              border: "none",
-              padding: "6px 12px",
-              cursor: "pointer"
-            }}
-          >
+          <Button style={{ marginBottom: 12 }} onClick={() => setShowCompleteFlow(true)}>
             Complete Site
-          </button>
+          </Button>
 
-          {/* ADD TASK */}
-          <div style={{ marginBottom: 15 }}>
+          <div style={{ marginBottom: 12 }}>
             <input
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
               placeholder="Task title"
-              style={{ width: "100%", marginBottom: 6 }}
             />
             <select
               value={newTaskPriority}
               onChange={(e) => setNewTaskPriority(e.target.value)}
-              style={{ width: "100%", marginBottom: 6 }}
             >
               <option value="NORMAL">Normal</option>
               <option value="HIGH">High</option>
             </select>
-            <button onClick={addTask}>Add Task</button>
+
+            <Button loading={addingTask} onClick={addTask}>
+              Add Task
+            </Button>
           </div>
 
-          {/* FILTERS */}
-          {["ALL", "PENDING", "DONE", "CANCELLED"].map(f => (
-            <button
-              key={f}
-              onClick={() => setTaskFilter(f)}
-              style={{ marginRight: 6 }}
-            >
-              {f}
-            </button>
-          ))}
+          {visibleTasks.length === 0 && (
+            <EmptyState
+              title="No tasks added"
+              subtitle="Start by adding the first task for this site"
+            />
+          )}
 
-          {/* TASK LIST */}
           {visibleTasks.map(task => (
-            <div key={task.id} style={{ border: "1px solid", padding: 8, marginTop: 6 }}>
-              <strong>{task.title}</strong>
-              <div>Status: {task.status}</div>
-              {task.status === "PENDING" && task.pendingWeeks > 0 && (
-                <div>Pending since {task.pendingWeeks} week(s)</div>
-              )}
-              <button
-                onClick={() => deleteTask(task.id)}
-                style={{ marginTop: 4, backgroundColor: "#ef4444", color: "#fff" }}
-              >
-                Delete
-              </button>
+            <div key={task.id} style={{ border: "1px solid", padding: 8 }}>
+              {task.title}
             </div>
           ))}
         </div>
       )}
 
-      {/* COMPLETE SITE FLOW */}
+      {/* COMPLETE FLOW */}
       {selectedSite && showCompleteFlow && (
-        <div
-          style={{
-            border: "1px solid #ef4444",
-            padding: 15,
-            backgroundColor: "#fff1f2"
-          }}
-        >
-          <h4>⚠️ Confirm Site Completion</h4>
-          <p>
-            Site: <strong>{selectedSite.name}</strong>
-          </p>
-          <p>
-            Engineer: <strong>{selectedSite.engineer}</strong>
-          </p>
-
-          <p style={{ color: "#b91c1c", fontSize: 13 }}>
-            Are you sure this site is completed?  
-            Once completed, this site cannot be modified again.
-          </p>
-
+        <div style={{ border: "1px solid red", padding: 12 }}>
           <textarea
-            placeholder="Write appreciation message"
+            placeholder="Appreciation"
             value={appreciation}
             onChange={(e) => setAppreciation(e.target.value)}
-            rows={3}
-            style={{ width: "100%", marginBottom: 10 }}
           />
 
           <label>
@@ -250,24 +198,16 @@ function Admin() {
               checked={confirmComplete}
               onChange={(e) => setConfirmComplete(e.target.checked)}
             />{" "}
-            Yes, I confirm this site is completed
+            I confirm
           </label>
 
-          <br />
-
-          <button
+          <Button
+            loading={completingSite}
             disabled={!confirmComplete}
             onClick={completeSiteFinally}
-            style={{
-              marginTop: 10,
-              backgroundColor: confirmComplete ? "#22c55e" : "#9ca3af",
-              color: "#fff",
-              border: "none",
-              padding: "6px 12px"
-            }}
           >
             Complete Site
-          </button>
+          </Button>
         </div>
       )}
     </Layout>
