@@ -2,13 +2,49 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import Layout from "../components/Layout";
-import PageTitle from "../components/PageTitle";
 import { logout } from "../utils/logout";
 import Button from "../components/Button";
 import { showError } from "../utils/showError";
 import { showSuccess } from "../utils/showSuccess";
 import SkeletonBox from "../components/SkeletonBox";
 import EmptyState from "../components/EmptyState";
+import { useAuth } from "../context/AuthContext";
+import "./Admin.css";
+
+// Construction theme (RP Construction Tracker) – scoped to .admin
+const ADMIN_THEME_STYLES = `
+  .admin { --rp-concrete: #e8e4df; --rp-sand: #d4cfc8; --rp-beige: #f5f1eb; --rp-yellow: #e6b800; --rp-yellow-soft: #fef9e6; --rp-grey: #4a4a4a; --rp-grey-light: #6b6b6b; --rp-card: #fff; --rp-shadow: 0 2px 12px rgba(0,0,0,0.08); --rp-radius: 10px; --rp-radius-sm: 8px; }
+  .admin { background: linear-gradient(165deg, #ebe8e3 0%, #dfdbd4 50%, #d8d3cc 100%); min-height: 100%; color: var(--rp-grey); }
+  .admin .rp-header { background: var(--rp-card); border-radius: var(--rp-radius); padding: 1rem 1.25rem; margin-bottom: 1.25rem; box-shadow: var(--rp-shadow); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
+  .admin .rp-header__left { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .admin .rp-header__title { font-size: 1.125rem; font-weight: 600; margin: 0; color: var(--rp-grey); }
+  .admin .rp-header__role { font-size: 0.75rem; color: var(--rp-grey-light); background: var(--rp-beige); padding: 2px 8px; border-radius: 999px; font-weight: 500; }
+  .admin .rp-header__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .admin .rp-cta { background: var(--rp-yellow) !important; color: #1a1a1a !important; border: none !important; font-weight: 600 !important; }
+  .admin .rp-cta:hover { filter: brightness(1.05); }
+  .admin .admin-card, .admin .admin__alerts, .admin .admin-site-card, .admin .admin-task-card { background: var(--rp-card); box-shadow: var(--rp-shadow); border: 1px solid rgba(0,0,0,0.06); border-radius: var(--rp-radius); }
+  .admin .admin-site-card { padding: 1.25rem; min-height: 88px; }
+  .admin .admin-site-card:hover, .admin .admin-site-card:focus-visible { border-color: var(--rp-yellow); box-shadow: 0 4px 16px rgba(230,184,0,0.15); outline: none; }
+  .admin .rp-site-status { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; }
+  .admin .rp-site-status--active { background: #dcfce7; color: #166534; }
+  .admin .rp-site-status--completed { background: #e5e7eb; color: #4b5563; }
+  .admin .rp-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+  .admin .rp-modal { background: var(--rp-card); border-radius: var(--rp-radius); box-shadow: 0 20px 40px rgba(0,0,0,0.15); max-width: 420px; width: 100%; padding: 1.5rem; }
+  .admin .rp-modal__title { margin: 0 0 1rem; font-size: 1.1rem; font-weight: 600; color: var(--rp-grey); }
+  .admin .rp-modal .admin-create__input, .admin .rp-modal .admin-create__select { width: 100%; min-width: 0; padding: 0.75rem 1rem; border-radius: var(--rp-radius-sm); border: 1px solid var(--rp-sand); font-size: 1rem; box-sizing: border-box; }
+  .admin .rp-summary-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; }
+  .admin .rp-chip { font-size: 0.8125rem; padding: 0.4rem 0.75rem; border-radius: 999px; background: var(--rp-beige); color: var(--rp-grey); font-weight: 500; border: 1px solid rgba(0,0,0,0.06); }
+  .admin .rp-chip--highlight { background: var(--rp-yellow-soft); color: #7c5a00; border-color: rgba(230,184,0,0.4); }
+  .admin .rp-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 1rem; padding: 3px; background: var(--rp-beige); border-radius: var(--rp-radius-sm); }
+  .admin .rp-tabs button { padding: 0.5rem 0.875rem; font-size: 0.8125rem; font-weight: 500; border: none; background: transparent; color: var(--rp-grey-light); border-radius: 6px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+  .admin .rp-tabs button:hover { color: var(--rp-grey); }
+  .admin .rp-tabs button.rp-tabs--active { background: var(--rp-card); color: var(--rp-grey); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .admin .admin-add-task__input, .admin .admin-reassign__select, .admin .admin-filters__select { width: 100%; min-width: 0; padding: 0.65rem 1rem; border-radius: var(--rp-radius-sm); border: 1px solid var(--rp-sand); font-size: 0.9375rem; box-sizing: border-box; }
+  .admin .rp-modal .admin-create__row { display: flex; flex-direction: column; gap: 0.75rem; }
+  .admin .rp-modal .admin-create__row .admin-create__input, .admin .rp-modal .admin-create__row .admin-create__select { width: 100%; }
+  @media (min-width: 480px) { .admin .admin-add-task__input { min-width: 200px; } .admin .admin-reassign__select { min-width: 180px; } }
+  .admin .admin-task-card__actions { align-items: center; }
+`;
 
 import {
   collection,
@@ -29,6 +65,7 @@ import { getISOWeekKey } from "../utils/weekUtils";
 
 function Admin() {
   const navigate = useNavigate();
+  const { role } = useAuth();
 
   const [pageLoading, setPageLoading] = useState(true);
 
@@ -389,17 +426,9 @@ function Admin() {
     return badges;
   };
 
-  const getTaskCardStyle = (task) => {
+  const isTaskOverdue = (task) => {
     const pendingDays = getPendingDays(task);
-    const isOverdue = task.status === "PENDING" && pendingDays !== null && pendingDays >= 3;
-
-    return {
-      border: isOverdue ? "2px solid #000" : "1px solid #ddd",
-      padding: 10,
-      marginBottom: 8,
-      borderRadius: 6,
-      background: isOverdue ? "#fff6f6" : "#fff",
-    };
+    return task.status === "PENDING" && pendingDays !== null && pendingDays >= 3;
   };
 
   // ✅ Week Filter
@@ -506,418 +535,404 @@ function Admin() {
     }
   };
 
+  const statusFilters = [
+    { value: "ALL", label: "All" },
+    { value: "PENDING", label: "Pending" },
+    { value: "DONE", label: "Done" },
+    { value: "CANCELLED", label: "Cancelled" },
+  ];
+
   return (
     <Layout>
-      <PageTitle title="Admin Dashboard" role="Admin" showBack />
-
-      {/* ✅ TOP ACTIONS */}
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {!selectedSite ? (
-            <Button onClick={() => setShowCreateSite(true)}>+ Create Site</Button>
-          ) : (
-            <Button
-              onClick={() => {
-                setSelectedSite(null);
-                setTasks([]);
-                setShowCompleteFlow(false);
-                setTaskFilter("ALL");
-                setWeekFilter("ALL_WEEKS");
-                setSelectedWeekKey("");
-                setAvailableWeeks([]);
-                setReassignEngineerUid("");
-              }}
-            >
-              ← Back to Sites
-            </Button>
-          )}
-
-          <Button onClick={() => navigate("/admin/reports")}>📊 Reports</Button>
-        </div>
-
-        <Button loading={loggingOut} onClick={handleLogout}>
-          Logout
-        </Button>
-      </div>
-
-      {/* ✅ Phase 7.1 Admin Alerts Banner (only on sites list) */}
-      {!selectedSite && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            borderRadius: 10,
-            border: adminAlertCounts.overdue > 0 ? "2px solid #000" : "1px solid #ddd",
-            background: adminAlertCounts.overdue > 0 ? "#fff6f6" : "#fff",
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 10,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ fontSize: 12 }}>
-            <b>🔔 System Alerts:</b>{" "}
-            {adminStatsLoading ? (
-              <>Loading...</>
-            ) : adminAlertCounts.overdue > 0 ? (
-              <>
-                🔥 Overdue: <b>{adminAlertCounts.overdue}</b> • ⏳ Pending:{" "}
-                <b>{adminAlertCounts.pending}</b>
-              </>
-            ) : (
-              <>
-                ✅ No overdue tasks • Pending: <b>{adminAlertCounts.pending}</b>
-              </>
+      <style>{ADMIN_THEME_STYLES}</style>
+      <div className="admin">
+        <header className="rp-header">
+          <div className="rp-header__left">
+            <h1 className="rp-header__title">RP Construction Tracker</h1>
+            <span className="rp-header__role">{role === "admin" ? "Admin" : role || "Admin"}</span>
+            {selectedSite && (
+              <Button
+                onClick={() => {
+                  setSelectedSite(null);
+                  setTasks([]);
+                  setShowCompleteFlow(false);
+                  setTaskFilter("ALL");
+                  setWeekFilter("ALL_WEEKS");
+                  setSelectedWeekKey("");
+                  setAvailableWeeks([]);
+                  setReassignEngineerUid("");
+                }}
+              >
+                ← Back to Sites
+              </Button>
             )}
           </div>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Button
-              onClick={() => {
-                navigate("/admin/reports");
-                showSuccess("Opening Reports → check Overdue Ranking ✅");
-              }}
-            >
-              Open Reports →
-            </Button>
-
-            <Button
-              onClick={async () => {
-                await loadAllTasksForAdminStats();
-                showSuccess("Alerts refreshed ✅");
-              }}
-            >
-              🔄 Refresh
+          <div className="rp-header__actions">
+            {!selectedSite && (
+              <Button className="rp-cta" onClick={() => setShowCreateSite(true)}>
+                + Create Site
+              </Button>
+            )}
+            <Button onClick={() => navigate("/admin/reports")}>Reports</Button>
+            <Button loading={loggingOut} onClick={handleLogout}>
+              Logout
             </Button>
           </div>
-        </div>
-      )}
+        </header>
 
-      {/* ✅ CREATE SITE MODAL */}
-      {!selectedSite && showCreateSite && (
-        <div
-          style={{
-            border: "1px solid #ddd",
-            padding: 12,
-            marginTop: 12,
-            borderRadius: 8,
-            background: "#fff",
-          }}
-        >
-          <h4 style={{ marginTop: 0 }}>Create New Site</h4>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <input
-              style={{ flex: 1, minWidth: 180 }}
-              placeholder="Site name (e.g. Wakad Site)"
-              value={newSiteName}
-              onChange={(e) => setNewSiteName(e.target.value)}
-            />
-
-            <select
-              style={{ flex: 1, minWidth: 180 }}
-              value={selectedEngineerUid}
-              onChange={(e) => setSelectedEngineerUid(e.target.value)}
-              disabled={engineersLoading}
-            >
-              <option value="">{engineersLoading ? "Loading engineers..." : "Select Engineer"}</option>
-
-              {engineers.map((eng) => (
-                <option key={eng.uid} value={eng.uid}>
-                  {eng.name || eng.email || eng.uid}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
-            <Button loading={creatingSite} onClick={handleCreateSite}>
-              Create
-            </Button>
-
-            <Button
-              onClick={() => {
-                setShowCreateSite(false);
-                setNewSiteName("");
-                setSelectedEngineerUid("");
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* ✅ ACTIVE SITES */}
-      {!selectedSite && (pageLoading || sitesLoading) && (
-        <>
-          <SkeletonBox />
-          <SkeletonBox />
-          <SkeletonBox />
-        </>
-      )}
-
-      {!selectedSite && !pageLoading && !sitesLoading && sites.length === 0 && (
-        <EmptyState title="No active sites" subtitle="Create or assign a site to get started" />
-      )}
-
-      {!selectedSite && !pageLoading && !sitesLoading && sites.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <h4>Active Sites</h4>
-
-          {sites.map((site) => (
-            <div
-              key={site.id}
-              style={{
-                border: "1px solid #ddd",
-                padding: 12,
-                marginBottom: 10,
-                cursor: "pointer",
-              }}
-              onClick={async () => {
-                setSelectedSite(site);
-                setShowCompleteFlow(false);
-                setTaskFilter("ALL");
-                setWeekFilter("ALL_WEEKS");
-                setSelectedWeekKey("");
-                setReassignEngineerUid("");
-
-                await loadTasksBySite(site.id);
-              }}
-            >
-              <strong>{site.name || "Unnamed Site"}</strong>
-
-              <div style={{ fontSize: 12 }}>
-                Engineer: <b>{site.assignedEngineerName || "-"}</b>
-              </div>
-
-              <div style={{ fontSize: 12, marginTop: 4 }}>
-                Current Week: <b>{site.currentWeekKey || "-"}</b>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ✅ TASKS */}
-      {selectedSite && !showCompleteFlow && (
-        <div style={{ marginTop: 12 }}>
-          <h4>{selectedSite.name}</h4>
-
-          <div style={{ fontSize: 12, marginBottom: 10 }}>
-            Current Week: <b>{selectedSite.currentWeekKey || "-"}</b>
-          </div>
-
-          {/* ✅ Reassign Engineer Panel */}
+        {!selectedSite && (
           <div
-            style={{
-              marginBottom: 12,
-              padding: 12,
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              background: "#fff",
-            }}
+            className={`admin__alerts ${adminAlertCounts.overdue > 0 ? "admin__alerts--overdue" : ""}`}
           >
-            <div style={{ fontSize: 12, marginBottom: 6 }}>
-              Assigned Engineer: <b>{selectedSite.assignedEngineerName || "-"}</b>
+            <div className="admin__alerts-text">
+              <strong>System alerts</strong>{" "}
+              {adminStatsLoading ? (
+                "Loading…"
+              ) : adminAlertCounts.overdue > 0 ? (
+                <>
+                  Overdue: <strong>{adminAlertCounts.overdue}</strong> · Pending:{" "}
+                  <strong>{adminAlertCounts.pending}</strong>
+                </>
+              ) : (
+                <>
+                  No overdue · Pending: <strong>{adminAlertCounts.pending}</strong>
+                </>
+              )}
+            </div>
+            <div className="admin__alerts-actions">
+              <Button
+                onClick={() => {
+                  navigate("/admin/reports");
+                  showSuccess("Opening Reports → check Overdue Ranking");
+                }}
+              >
+                Open Reports
+              </Button>
+              <Button
+                onClick={async () => {
+                  await loadAllTasksForAdminStats();
+                  showSuccess("Alerts refreshed");
+                }}
+              >
+                Refresh
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {!selectedSite && showCreateSite && (
+          <div
+            className="rp-modal-backdrop"
+            onClick={() => {
+              setShowCreateSite(false);
+              setNewSiteName("");
+              setSelectedEngineerUid("");
+            }}
+            role="presentation"
+          >
+            <div
+              className="rp-modal admin-create"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="create-site-title"
+            >
+              <h4 id="create-site-title" className="rp-modal__title">Create New Site</h4>
+              <div className="admin-create__row">
+                <input
+                  className="admin-create__input"
+                  placeholder="Site name (e.g. Wakad Site)"
+                  value={newSiteName}
+                  onChange={(e) => setNewSiteName(e.target.value)}
+                />
+                <select
+                  className="admin-create__select"
+                  value={selectedEngineerUid}
+                  onChange={(e) => setSelectedEngineerUid(e.target.value)}
+                  disabled={engineersLoading}
+                >
+                  <option value="">{engineersLoading ? "Loading engineers…" : "Select Engineer"}</option>
+                  {engineers.map((eng) => (
+                    <option key={eng.uid} value={eng.uid}>
+                      {eng.name || eng.email || eng.uid}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="admin-create__actions">
+                <Button className="rp-cta" loading={creatingSite} onClick={handleCreateSite}>
+                  Create Site
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowCreateSite(false);
+                    setNewSiteName("");
+                    setSelectedEngineerUid("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!selectedSite && (pageLoading || sitesLoading) && (
+          <div className="admin-skeletons">
+            <SkeletonBox />
+            <SkeletonBox />
+            <SkeletonBox />
+          </div>
+        )}
+
+        {!selectedSite && !pageLoading && !sitesLoading && sites.length === 0 && (
+          <EmptyState title="No active sites" subtitle="Create or assign a site to get started" />
+        )}
+
+        {!selectedSite && !pageLoading && !sitesLoading && sites.length > 0 && (
+          <section>
+            <h4 className="admin-sites__title">Sites</h4>
+            <div className="admin-sites__grid">
+              {sites.map((site) => (
+                <button
+                  type="button"
+                  key={site.id}
+                  className="admin-site-card"
+                  onClick={async () => {
+                    setSelectedSite(site);
+                    setShowCompleteFlow(false);
+                    setTaskFilter("ALL");
+                    setWeekFilter("ALL_WEEKS");
+                    setSelectedWeekKey("");
+                    setReassignEngineerUid("");
+                    await loadTasksBySite(site.id);
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem", flexWrap: "wrap" }}>
+                    <div className="admin-site-card__name">{site.name || "Unnamed Site"}</div>
+                    <span className={site.isCompleted ? "rp-site-status rp-site-status--completed" : "rp-site-status rp-site-status--active"}>
+                      {site.isCompleted ? "Completed" : "Active"}
+                    </span>
+                  </div>
+                  <div className="admin-site-card__meta">Engineer: <strong>{site.assignedEngineerName || "—"}</strong></div>
+                  <div className="admin-site-card__meta">Current week: <strong>{site.currentWeekKey || "—"}</strong></div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {selectedSite && !showCompleteFlow && (
+          <>
+            <section className="admin-card" style={{ marginBottom: "1.25rem" }}>
+              <header className="admin-detail__header">
+                <h4 className="admin-detail__site-name">{selectedSite.name}</h4>
+                <div className="admin-detail__week">Engineer: <strong>{selectedSite.assignedEngineerName || "—"}</strong> · Week: <strong>{selectedSite.currentWeekKey || "—"}</strong></div>
+              </header>
+
+              <div className="admin-reassign">
+                <div className="admin-reassign__engineer">Reassign engineer</div>
+                <div className="admin-reassign__row">
+                  <select
+                    className="admin-reassign__select"
+                    value={reassignEngineerUid}
+                    onChange={(e) => setReassignEngineerUid(e.target.value)}
+                    disabled={engineersLoading || reassigning}
+                  >
+                    <option value="">Change engineer…</option>
+                    {engineers.map((eng) => (
+                      <option key={eng.uid} value={eng.uid}>
+                        {eng.name || eng.email || eng.uid}
+                      </option>
+                    ))}
+                  </select>
+                  <Button loading={reassigning} onClick={reassignEngineer}>
+                    Reassign
+                  </Button>
+                </div>
+                <div className="admin-reassign__note">Only current week tasks move to the new engineer.</div>
+              </div>
+            </section>
+
+            <div className="rp-summary-chips">
+              <span className="rp-chip">Total <strong>{summary.total}</strong></span>
+              <span className={`rp-chip ${summary.pending > 0 ? "rp-chip--highlight" : ""}`}>Pending <strong>{summary.pending}</strong></span>
+              <span className="rp-chip">Done <strong>{summary.done}</strong></span>
+              <span className="rp-chip">Cancelled <strong>{summary.cancelled}</strong></span>
             </div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <select
-                value={reassignEngineerUid}
-                onChange={(e) => setReassignEngineerUid(e.target.value)}
-                disabled={engineersLoading || reassigning}
-                style={{ minWidth: 200 }}
-              >
-                <option value="">Change Engineer...</option>
-                {engineers.map((eng) => (
-                  <option key={eng.uid} value={eng.uid}>
-                    {eng.name || eng.email || eng.uid}
-                  </option>
-                ))}
-              </select>
+            <div className="admin-filters">
+              <div className="admin-filters__group">
+                <span className="admin-filters__label">Week</span>
+                <div className="admin-filters__row">
+                  <select
+                    className="admin-filters__select"
+                    value={weekFilter}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setWeekFilter(v);
+                      if (v !== "WEEK_KEY") setSelectedWeekKey("");
+                    }}
+                  >
+                    <option value="ALL_WEEKS">All weeks</option>
+                    <option value="CURRENT_WEEK">Current week</option>
+                    <option value="WEEK_KEY">Select week…</option>
+                  </select>
+                  {weekFilter === "WEEK_KEY" && (
+                    <select
+                      className="admin-filters__select"
+                      value={selectedWeekKey}
+                      onChange={(e) => setSelectedWeekKey(e.target.value)}
+                    >
+                      <option value="">Select week</option>
+                      {availableWeeks.map((wk) => (
+                        <option key={wk} value={wk}>{wk}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+              <div className="admin-filters__group">
+                <span className="admin-filters__label">Status</span>
+                <div className="rp-tabs">
+                  {statusFilters.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={taskFilter === value ? "rp-tabs--active" : ""}
+                      onClick={() => setTaskFilter(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-              <Button loading={reassigning} onClick={reassignEngineer}>
-                Reassign
+            <div className="admin-add-task">
+              <input
+                className="admin-add-task__input"
+                placeholder="Task title"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+              />
+              <select
+                className="admin-add-task__select"
+                value={newTaskPriority}
+                onChange={(e) => setNewTaskPriority(e.target.value)}
+              >
+                <option value="NORMAL">Normal</option>
+                <option value="HIGH">High</option>
+              </select>
+              <Button loading={addingTask} onClick={addTask}>
+                Add Task
               </Button>
             </div>
 
-            <div style={{ fontSize: 12, marginTop: 6 }}>
-              ✅ Only <b>Current Week</b> tasks will be moved to new engineer.
-            </div>
-          </div>
-
-          {/* ✅ Summary */}
-          <div
-            style={{
-              fontSize: 12,
-              marginBottom: 12,
-              padding: 10,
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              background: "#fff",
-            }}
-          >
-            <b>Summary:</b> Total: <b>{summary.total}</b> | Pending: <b>{summary.pending}</b> | Done:{" "}
-            <b>{summary.done}</b> | Cancelled: <b>{summary.cancelled}</b>
-          </div>
-
-          {/* ✅ Week Filter */}
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-            <select
-              value={weekFilter}
-              onChange={(e) => {
-                const v = e.target.value;
-                setWeekFilter(v);
-                if (v !== "WEEK_KEY") setSelectedWeekKey("");
-              }}
-            >
-              <option value="ALL_WEEKS">All Weeks</option>
-              <option value="CURRENT_WEEK">Current Week Only</option>
-              <option value="WEEK_KEY">Select Week...</option>
-            </select>
-
-            {weekFilter === "WEEK_KEY" && (
-              <select value={selectedWeekKey} onChange={(e) => setSelectedWeekKey(e.target.value)}>
-                <option value="">Select weekKey</option>
-                {availableWeeks.map((wk) => (
-                  <option key={wk} value={wk}>
-                    {wk}
-                  </option>
-                ))}
-              </select>
+            {tasksLoading && (
+              <div className="admin-skeletons">
+                <SkeletonBox />
+                <SkeletonBox />
+              </div>
             )}
-          </div>
 
-          {/* ✅ Status Filter */}
-          <div style={{ marginBottom: 12 }}>
-            <select value={taskFilter} onChange={(e) => setTaskFilter(e.target.value)}>
-              <option value="ALL">All</option>
-              <option value="PENDING">Pending</option>
-              <option value="DONE">Done</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-          </div>
+            {!tasksLoading && visibleTasks.length === 0 && (
+              <EmptyState title="No tasks found" subtitle="No tasks match this filter" />
+            )}
 
-          {/* ✅ Add Task */}
-          <div style={{ marginBottom: 12 }}>
-            <input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="Task title" />
+            {!tasksLoading && visibleTasks.length > 0 && (
+              <div className="admin-tasks">
+                {visibleTasks.map((task) => {
+                  const badges = getBadges(task);
+                  const pendingDays = (() => {
+                    try { return getPendingDays(task); } catch { return null; }
+                  })();
+                  const overdue = isTaskOverdue(task);
 
-            <select value={newTaskPriority} onChange={(e) => setNewTaskPriority(e.target.value)}>
-              <option value="NORMAL">Normal</option>
-              <option value="HIGH">High</option>
-            </select>
-
-            <Button loading={addingTask} onClick={addTask}>
-              Add Task
-            </Button>
-          </div>
-
-          {tasksLoading && (
-            <>
-              <SkeletonBox />
-              <SkeletonBox />
-            </>
-          )}
-
-          {!tasksLoading && visibleTasks.length === 0 && (
-            <EmptyState title="No tasks found" subtitle="No tasks match this filter" />
-          )}
-
-          {!tasksLoading &&
-            visibleTasks.map((task) => {
-              const badges = getBadges(task);
-              const pendingDays = (() => {
-                try {
-                  return getPendingDays(task);
-                } catch {
-                  return null;
-                }
-              })();
-
-              return (
-                <div key={task.id} style={getTaskCardStyle(task)}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <div>
-                      <strong>{task.title}</strong>
-
-                      <div style={{ fontSize: 12, marginTop: 4 }}>
-                        Status: <b>{task.status}</b> | Priority: <b>{task.priority}</b>
+                  return (
+                    <article
+                      key={task.id}
+                      className={`admin-task-card ${overdue ? "admin-task-card--overdue" : ""}`}
+                    >
+                      <div className="admin-task-card__head">
+                        <h5 className="admin-task-card__title">{task.title}</h5>
+                        <div className="admin-task-card__actions">
+                          {task.status !== "DONE" && (
+                            <Button
+                              loading={updatingTaskId === task.id}
+                              onClick={() => updateTaskStatus(task.id, "DONE")}
+                            >
+                              Mark done
+                            </Button>
+                          )}
+                          {task.status !== "CANCELLED" && (
+                            <Button
+                              loading={updatingTaskId === task.id}
+                              onClick={() => updateTaskStatus(task.id, "CANCELLED")}
+                            >
+                              Cancel
+                            </Button>
+                          )}
+                          <Button loading={deletingTaskId === task.id} onClick={() => deleteTask(task.id)}>
+                            Delete
+                          </Button>
+                        </div>
                       </div>
-
-                      <div style={{ fontSize: 12, marginTop: 4 }}>
-                        Week: <b>{task.weekKey || "-"}</b>
+                      <div className="admin-task-card__meta">
+                        <span className={`admin-badge admin-badge--${(task.status || "").toLowerCase()}`}>
+                          {task.status}
+                        </span>
+                        {" · "}
+                        Priority: <strong>{task.priority}</strong>
+                        {" · "}
+                        Week: <strong>{task.weekKey || "—"}</strong>
                       </div>
-
                       {pendingDays !== null && (
-                        <div style={{ fontSize: 12, marginTop: 4 }}>
-                          Pending since: <b>{pendingDays} day(s)</b>
+                        <div className="admin-task-card__meta">
+                          Pending since: <strong>{pendingDays} day{pendingDays !== 1 ? "s" : ""}</strong>
                         </div>
                       )}
-
                       {badges.length > 0 && (
-                        <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <div className="admin-badges">
                           {badges.map((b, idx) => (
                             <span
                               key={idx}
-                              style={{
-                                fontSize: 12,
-                                padding: "2px 8px",
-                                borderRadius: 999,
-                                border: "1px solid #ddd",
-                                background: "#f9f9f9",
-                              }}
+                              className={`admin-badge admin-badge--${String(b.type).toLowerCase()}`}
                             >
                               {b.text}
                             </span>
                           ))}
                         </div>
                       )}
-                    </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
 
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {task.status !== "DONE" && (
-                        <Button loading={updatingTaskId === task.id} onClick={() => updateTaskStatus(task.id, "DONE")}>
-                          Mark DONE
-                        </Button>
-                      )}
-
-                      {task.status !== "CANCELLED" && (
-                        <Button
-                          loading={updatingTaskId === task.id}
-                          onClick={() => updateTaskStatus(task.id, "CANCELLED")}
-                        >
-                          Cancel
-                        </Button>
-                      )}
-
-                      <Button loading={deletingTaskId === task.id} onClick={() => deleteTask(task.id)}>
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-      )}
-
-      {/* ✅ COMPLETE FLOW */}
-      {selectedSite && showCompleteFlow && (
-        <div style={{ border: "1px solid red", padding: 12, marginTop: 12 }}>
-          <textarea placeholder="Appreciation" value={appreciation} onChange={(e) => setAppreciation(e.target.value)} />
-
-          <label>
-            <input type="checkbox" checked={confirmComplete} onChange={(e) => setConfirmComplete(e.target.checked)} /> I
-            confirm
-          </label>
-
-          <Button loading={completingSite} disabled={!confirmComplete} onClick={() => {}}>
-            Complete Site
-          </Button>
-        </div>
-      )}
+        {selectedSite && showCompleteFlow && (
+          <div className="admin-complete">
+            <textarea
+              placeholder="Appreciation"
+              value={appreciation}
+              onChange={(e) => setAppreciation(e.target.value)}
+            />
+            <label>
+              <input
+                type="checkbox"
+                checked={confirmComplete}
+                onChange={(e) => setConfirmComplete(e.target.checked)}
+              />{" "}
+              I confirm
+            </label>
+            <Button loading={completingSite} disabled={!confirmComplete} onClick={() => {}}>
+              Complete Site
+            </Button>
+          </div>
+        )}
+      </div>
     </Layout>
   );
 }

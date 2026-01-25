@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { auth, db } from "../firebase/firebaseConfig";
@@ -13,28 +13,18 @@ import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { showError } from "../utils/showError";
 import { showSuccess } from "../utils/showSuccess";
 
-import "./Login.css";
+import "./Login.css"; // Assuming you add the CSS below to Login.css
 
 export default function Login() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [light, setLight] = useState(0); // For slider
 
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingCreateEngineer, setLoadingCreateEngineer] = useState(false);
   const [loadingReset, setLoadingReset] = useState(false);
-
-  const catRef = useRef(null);
-
-  // ✅ cat animation based on password typing
-  useEffect(() => {
-    if (password.length > 0) {
-      catRef.current?.classList.add("password-focused");
-    } else {
-      catRef.current?.classList.remove("password-focused");
-    }
-  }, [password]);
 
   // ✅ Redirect by Firestore role
   const redirectByRole = async (uid) => {
@@ -61,7 +51,8 @@ export default function Login() {
   };
 
   // ✅ LOGIN
-  const handleLogin = async () => {
+  const handleLogin = async (event) => {
+    event.preventDefault();
     if (!email.trim()) return showError(null, "Enter email");
     if (!password.trim()) return showError(null, "Enter password");
 
@@ -149,66 +140,94 @@ export default function Login() {
   };
 
   return (
-    <div className="login-wrapper">
-      <div className="login-card">
-        {/* 🐱 CAT */}
-        <div className="cat-container" ref={catRef}>
-          <div className="cat-face">
-            <div className="cat-ear-left"></div>
-            <div className="cat-ear-right"></div>
-            <div className="cat-head"></div>
-            <div className="cat-eye-left"></div>
-            <div className="cat-eye-right"></div>
-            <div className="cat-nose"></div>
-            <div className="cat-mouth"></div>
-            <div className="cat-paw cat-paw-left"></div>
-            <div className="cat-paw cat-paw-right"></div>
-          </div>
+    <div className="login-container" data-light={light}>
+      {/* Slider form above lamp */}
+      <form className="slider-form">
+        <div className="icon sun">
+          <div className="ray"></div>
+          <div className="ray"></div>
+          <div className="ray"></div>
+          <div className="ray"></div>
+          <div className="ray"></div>
+          <div className="ray"></div>
+          <div className="ray"></div>
+          <div className="ray"></div>
         </div>
-
-        <h2>R.P. CONSTRUCTION</h2>
-
         <input
-          type="email"
-          placeholder="Enter email (e.g. admin@rp.com)"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          type="range"
+          id="slider"
+          value={light}
+          min="0"
+          max="10"
+          onChange={(e) => setLight(e.target.value)}
         />
+      </form>
 
-        <input
-          type="password"
-          placeholder="Enter password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+      {/* Lamp in the center */}
+      <div className="lamp-wrapper">
+        <div className="lamp-rope"></div>
+        <div className="lamp">
+          <div className="lamp-part -top">
+            <div className="lamp-part -top-part"></div>
+            <div className="lamp-part -top-part right"></div>
+          </div>
+          <div className="lamp-part -body"></div>
+          <div className="lamp-part -body right"></div>
+          <div className="lamp-part -bottom"></div>
+          <div className="blub"></div>
+        </div>
+        <div className="wall-light-shadow"></div>
+      </div>
 
-        {/* ✅ Login */}
-        <button onClick={handleLogin} disabled={loadingLogin}>
-          {loadingLogin ? "Logging in..." : "Login"}
-        </button>
-
-        {/* ✅ Forgot password */}
-        <button
-          onClick={onForgotPassword}
-          disabled={loadingReset}
-          style={{ marginTop: 8 }}
-        >
-          {loadingReset ? "Sending..." : "Forgot Password"}
-        </button>
-
-        {/* ✅ Create Engineer */}
-        <button
-          onClick={createEngineerAccount}
-          disabled={loadingCreateEngineer}
-          style={{ marginTop: 8 }}
-        >
-          {loadingCreateEngineer ? "Creating..." : "Create Engineer Account (Dev)"}
-        </button>
-
-        {/* ✅ Phone OTP code kept for future (commented) */}
-        {/*
-          Phone OTP will be re-enabled after Billing is enabled.
-        */}
+      {/* Login form below lamp */}
+      <div className="login-form">
+        <h2>Welcome</h2>
+        <form onSubmit={handleLogin}>
+          <div className="form-group">
+            <label htmlFor="email">Email:</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="password">Password:</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <button type="submit" className="login-btn" disabled={loadingLogin}>
+            {loadingLogin ? "Logging in..." : "Login"}
+          </button>
+          {/* Additional buttons */}
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            disabled={loadingReset}
+            className="login-btn"
+            style={{ marginTop: 8 }}
+          >
+            {loadingReset ? "Sending..." : "Forgot Password"}
+          </button>
+          <button
+            type="button"
+            onClick={createEngineerAccount}
+            disabled={loadingCreateEngineer}
+            className="login-btn"
+            style={{ marginTop: 8 }}
+          >
+            {loadingCreateEngineer ? "Creating..." : "Create Engineer Account (Dev)"}
+          </button>
+        </form>
       </div>
     </div>
   );
