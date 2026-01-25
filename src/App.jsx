@@ -6,6 +6,9 @@ import Login from "./pages/Login";
 import Admin from "./pages/Admin";
 import Engineer from "./pages/Engineer";
 import Reports from "./pages/Reports";
+import ReportsAdvanced from "./pages/ReportsAdvanced";
+import ReportsSnapshots from "./pages/ReportsSnapshots";
+import ReportsSnapshotDetails from "./pages/ReportsSnapshotDetails";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -28,11 +31,42 @@ export default function App() {
         }
       />
 
+      {/* Live Reports */}
       <Route
         path="/admin/reports"
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <Reports />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ✅ Advanced Reports */}
+      <Route
+        path="/admin/reports/advanced"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <ReportsAdvanced />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ✅ Snapshots list */}
+      <Route
+        path="/admin/reports/snapshots"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <ReportsSnapshots />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ✅ Snapshot details */}
+      <Route
+        path="/admin/reports/snapshots/:weekKey"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <ReportsSnapshotDetails />
           </ProtectedRoute>
         }
       />

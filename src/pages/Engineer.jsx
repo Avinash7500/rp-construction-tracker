@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Layout from "../components/Layout";
 import PageTitle from "../components/PageTitle";
 import { logout } from "../utils/logout";
@@ -48,6 +48,12 @@ function Engineer() {
 
   const [nextWeekLoading, setNextWeekLoading] = useState(false);
 
+  // ✅ Phase 7.0 Notification popup
+  const [showReminders, setShowReminders] = useState(false);
+
+  // optional: scroll top for reminders
+  const remindersRef = useRef(null);
+
   useEffect(() => {
     const t = setTimeout(() => setPageLoading(false), 600);
     return () => clearTimeout(t);
@@ -91,6 +97,7 @@ function Engineer() {
     try {
       setTasksLoading(true);
       setTasks([]);
+      setShowReminders(false);
 
       const ref = collection(db, "tasks");
       const weekKey = site?.currentWeekKey;
@@ -213,7 +220,7 @@ function Engineer() {
     }
   };
 
-  // ✅ Phase 4.4 Helpers
+  // ✅ Helpers
   const getPendingDays = (task) => {
     try {
       if (!task?.statusUpdatedAt) return null;
@@ -267,17 +274,48 @@ function Engineer() {
     };
   };
 
-  // ✅ Counts (Phase 4.4.1)
+  // ✅ Counts
   const counts = useMemo(() => {
     const pending = tasks.filter((t) => t.status === "PENDING").length;
     const done = tasks.filter((t) => t.status === "DONE").length;
     const cancelled = tasks.filter((t) => t.status === "CANCELLED").length;
-    return { pending, done, cancelled };
+
+    // ✅ Phase 7.0 overdue count (pending >= 3 days)
+    const overdue = tasks.filter((t) => {
+      const pd = getPendingDays(t);
+      return t.status === "PENDING" && pd !== null && pd >= 3;
+    }).length;
+
+    return { pending, done, cancelled, overdue };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks]);
 
   const visibleTasks = tasks.filter((t) =>
     taskFilter === "ALL" ? true : t.status === taskFilter
   );
+
+  const reminderTasks = useMemo(() => {
+    // ✅ only pending tasks, overdue first
+    const list = tasks
+      .filter((t) => t.status === "PENDING")
+      .map((t) => {
+        const pendingDays = getPendingDays(t);
+        const isOverdue = pendingDays !== null && pendingDays >= 3;
+        return {
+          ...t,
+          _pendingDays: pendingDays,
+          _isOverdue: isOverdue,
+        };
+      });
+
+    list.sort((a, b) => {
+      if (a._isOverdue !== b._isOverdue) return a._isOverdue ? -1 : 1;
+      return (b._pendingDays || 0) - (a._pendingDays || 0);
+    });
+
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks]);
 
   return (
     <Layout>
@@ -301,6 +339,7 @@ function Engineer() {
               setSelectedSite(null);
               setTasks([]);
               setTaskFilter("ALL");
+              setShowReminders(false);
             }}
           >
             ← Back
@@ -367,6 +406,64 @@ function Engineer() {
             Current Week: <b>{selectedSite.currentWeekKey || "-"}</b>
           </div>
 
+          {/* ✅ Phase 7.0 Notification Banner */}
+          <div
+            style={{
+              marginBottom: 12,
+              padding: 12,
+              borderRadius: 10,
+              border: counts.overdue > 0 ? "2px solid #000" : "1px solid #ddd",
+              background: counts.overdue > 0 ? "#fff6f6" : "#fff",
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 10,
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ fontSize: 12 }}>
+              <b>🔔 Alerts:</b>{" "}
+              {counts.overdue > 0 ? (
+                <>
+                  <span>
+                    🔥 Overdue: <b>{counts.overdue}</b> •{" "}
+                  </span>
+                  <span>
+                    ⏳ Pending: <b>{counts.pending}</b>
+                  </span>
+                </>
+              ) : (
+                <>
+                  ✅ No overdue tasks • Pending: <b>{counts.pending}</b>
+                </>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Button
+                onClick={() => {
+                  setShowReminders((v) => !v);
+                  setTimeout(() => {
+                    remindersRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+                  }, 100);
+                }}
+                disabled={counts.pending === 0}
+              >
+                🔔 Reminders
+              </Button>
+
+              <Button
+                onClick={() => {
+                  setTaskFilter("PENDING");
+                  showSuccess("Showing pending tasks ✅");
+                }}
+                disabled={counts.pending === 0}
+              >
+                View Pending →
+              </Button>
+            </div>
+          </div>
+
           {/* ✅ Phase 4.4.1 Counts */}
           <div
             style={{
@@ -382,6 +479,73 @@ function Engineer() {
             Pending: <b>{counts.pending}</b> | Done: <b>{counts.done}</b> | Cancelled:{" "}
             <b>{counts.cancelled}</b>
           </div>
+
+          {/* ✅ Reminders Popup */}
+          {showReminders && (
+            <div
+              ref={remindersRef}
+              style={{
+                marginBottom: 12,
+                padding: 12,
+                borderRadius: 10,
+                border: "1px solid #ddd",
+                background: "#f9fafb",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ fontWeight: 800, fontSize: 13 }}>
+                  🔔 Reminder List (Pending Tasks)
+                </div>
+
+                <Button onClick={() => setShowReminders(false)}>✖ Close</Button>
+              </div>
+
+              <div style={{ marginTop: 10 }}>
+                {reminderTasks.length === 0 ? (
+                  <div style={{ fontSize: 12 }}>✅ No pending tasks.</div>
+                ) : (
+                  reminderTasks.slice(0, 25).map((t) => (
+                    <div
+                      key={t.id}
+                      style={{
+                        padding: 10,
+                        borderRadius: 8,
+                        border: t._isOverdue ? "2px solid #000" : "1px solid #ddd",
+                        background: t._isOverdue ? "#fff6f6" : "#fff",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <div style={{ fontWeight: 800 }}>{t.title || "Task"}</div>
+                      <div style={{ fontSize: 12, marginTop: 4 }}>
+                        Week: <b>{t.weekKey || "-"}</b> •{" "}
+                        {t._pendingDays !== null ? (
+                          <>
+                            Pending: <b>{t._pendingDays} day(s)</b>
+                          </>
+                        ) : (
+                          <>Pending: -</>
+                        )}
+                      </div>
+
+                      {t._isOverdue && (
+                        <div style={{ fontSize: 12, marginTop: 6, fontWeight: 800 }}>
+                          🔥 Overdue
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ✅ Next Week button improved */}
           <div style={{ marginBottom: 12 }}>

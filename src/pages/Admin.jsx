@@ -48,9 +48,13 @@ function Admin() {
 
   const [selectedSite, setSelectedSite] = useState(null);
 
-  // ✅ Tasks
+  // ✅ Tasks (selected site)
   const [tasks, setTasks] = useState([]);
   const [tasksLoading, setTasksLoading] = useState(false);
+
+  // ✅ Phase 7.1: All tasks for admin dashboard notification counts
+  const [allTasks, setAllTasks] = useState([]);
+  const [adminStatsLoading, setAdminStatsLoading] = useState(true);
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("NORMAL");
@@ -136,11 +140,7 @@ function Admin() {
       setTasks([]);
 
       const ref = collection(db, "tasks");
-      const q = query(
-        ref,
-        where("siteId", "==", siteId),
-        orderBy("createdAt", "desc")
-      );
+      const q = query(ref, where("siteId", "==", siteId), orderBy("createdAt", "desc"));
 
       const snap = await getDocs(q);
 
@@ -151,10 +151,7 @@ function Admin() {
 
       setTasks(tasksData);
 
-      const weeks = Array.from(
-        new Set(tasksData.map((t) => t.weekKey).filter(Boolean))
-      ).sort();
-
+      const weeks = Array.from(new Set(tasksData.map((t) => t.weekKey).filter(Boolean))).sort();
       setAvailableWeeks(weeks);
     } catch (e) {
       console.error(e);
@@ -164,9 +161,33 @@ function Admin() {
     }
   };
 
+  // ✅ Phase 7.1: Load all tasks for dashboard stats
+  const loadAllTasksForAdminStats = async () => {
+    try {
+      setAdminStatsLoading(true);
+
+      const ref = collection(db, "tasks");
+      const q = query(ref, orderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+
+      const data = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      setAllTasks(data);
+    } catch (e) {
+      console.error(e);
+      showError(e, "Failed to load admin stats");
+    } finally {
+      setAdminStatsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadSites();
     loadEngineers();
+    loadAllTasksForAdminStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -255,6 +276,7 @@ function Admin() {
       setNewTaskPriority("NORMAL");
 
       await loadTasksBySite(selectedSite.id);
+      await loadAllTasksForAdminStats();
     } catch (e) {
       console.error(e);
       showError(e, "Failed to add task");
@@ -280,6 +302,7 @@ function Admin() {
 
       showSuccess(`Task updated: ${status} ✅`);
       await loadTasksBySite(selectedSite.id);
+      await loadAllTasksForAdminStats();
     } catch (e) {
       console.error(e);
       showError(e, "Failed to update task status");
@@ -303,6 +326,7 @@ function Admin() {
 
       showSuccess("Task deleted ✅");
       await loadTasksBySite(selectedSite.id);
+      await loadAllTasksForAdminStats();
     } catch (e) {
       console.error(e);
       showError(e, "Failed to delete task");
@@ -326,6 +350,20 @@ function Admin() {
       return null;
     }
   };
+
+  // ✅ Phase 7.1 Admin alert counts (overall system)
+  const adminAlertCounts = useMemo(() => {
+    const pending = allTasks.filter((t) => t.status === "PENDING").length;
+
+    const overdue = allTasks.filter((t) => {
+      if (t.status !== "PENDING") return false;
+      const pd = getPendingDays(t);
+      return pd !== null && pd >= 3;
+    }).length;
+
+    return { pending, overdue };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTasks]);
 
   const getBadges = (task) => {
     const badges = [];
@@ -353,8 +391,7 @@ function Admin() {
 
   const getTaskCardStyle = (task) => {
     const pendingDays = getPendingDays(task);
-    const isOverdue =
-      task.status === "PENDING" && pendingDays !== null && pendingDays >= 3;
+    const isOverdue = task.status === "PENDING" && pendingDays !== null && pendingDays >= 3;
 
     return {
       border: isOverdue ? "2px solid #000" : "1px solid #ddd",
@@ -382,7 +419,7 @@ function Admin() {
     return true;
   });
 
-  // ✅ Phase 4.4.2 Summary counts (week based)
+  // ✅ Summary counts (week based)
   const summary = useMemo(() => {
     const total = filteredByWeek.length;
     const pending = filteredByWeek.filter((t) => t.status === "PENDING").length;
@@ -393,9 +430,7 @@ function Admin() {
   }, [filteredByWeek]);
 
   // ✅ Status Filter after summary
-  const visibleTasks = filteredByWeek.filter((t) =>
-    taskFilter === "ALL" ? true : t.status === taskFilter
-  );
+  const visibleTasks = filteredByWeek.filter((t) => (taskFilter === "ALL" ? true : t.status === taskFilter));
 
   // ✅ Phase 4.5: Reassign engineer
   const reassignEngineer = async () => {
@@ -431,19 +466,13 @@ function Admin() {
 
       // ✅ Update only current week tasks
       const tasksRef = collection(db, "tasks");
-
       const currentWeekKey = selectedSite.currentWeekKey;
 
       if (!currentWeekKey) {
         throw new Error("Site currentWeekKey missing");
       }
 
-      const q = query(
-        tasksRef,
-        where("siteId", "==", selectedSite.id),
-        where("weekKey", "==", currentWeekKey)
-      );
-
+      const q = query(tasksRef, where("siteId", "==", selectedSite.id), where("weekKey", "==", currentWeekKey));
       const snap = await getDocs(q);
 
       snap.docs.forEach((d) => {
@@ -457,7 +486,6 @@ function Admin() {
 
       showSuccess("Engineer reassigned ✅");
 
-      // ✅ refresh selectedSite local
       const updatedSite = {
         ...selectedSite,
         assignedEngineerId: newEngineer.uid,
@@ -465,11 +493,11 @@ function Admin() {
       };
       setSelectedSite(updatedSite);
 
-      // reset dropdown
       setReassignEngineerUid("");
 
       await loadSites();
       await loadTasksBySite(selectedSite.id);
+      await loadAllTasksForAdminStats();
     } catch (e) {
       console.error(e);
       showError(e, "Failed to reassign engineer");
@@ -504,7 +532,6 @@ function Admin() {
             </Button>
           )}
 
-          {/* ✅ NEW: REPORTS BUTTON */}
           <Button onClick={() => navigate("/admin/reports")}>📊 Reports</Button>
         </div>
 
@@ -512,6 +539,60 @@ function Admin() {
           Logout
         </Button>
       </div>
+
+      {/* ✅ Phase 7.1 Admin Alerts Banner (only on sites list) */}
+      {!selectedSite && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 10,
+            border: adminAlertCounts.overdue > 0 ? "2px solid #000" : "1px solid #ddd",
+            background: adminAlertCounts.overdue > 0 ? "#fff6f6" : "#fff",
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 10,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ fontSize: 12 }}>
+            <b>🔔 System Alerts:</b>{" "}
+            {adminStatsLoading ? (
+              <>Loading...</>
+            ) : adminAlertCounts.overdue > 0 ? (
+              <>
+                🔥 Overdue: <b>{adminAlertCounts.overdue}</b> • ⏳ Pending:{" "}
+                <b>{adminAlertCounts.pending}</b>
+              </>
+            ) : (
+              <>
+                ✅ No overdue tasks • Pending: <b>{adminAlertCounts.pending}</b>
+              </>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Button
+              onClick={() => {
+                navigate("/admin/reports");
+                showSuccess("Opening Reports → check Overdue Ranking ✅");
+              }}
+            >
+              Open Reports →
+            </Button>
+
+            <Button
+              onClick={async () => {
+                await loadAllTasksForAdminStats();
+                showSuccess("Alerts refreshed ✅");
+              }}
+            >
+              🔄 Refresh
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* ✅ CREATE SITE MODAL */}
       {!selectedSite && showCreateSite && (
@@ -540,9 +621,7 @@ function Admin() {
               onChange={(e) => setSelectedEngineerUid(e.target.value)}
               disabled={engineersLoading}
             >
-              <option value="">
-                {engineersLoading ? "Loading engineers..." : "Select Engineer"}
-              </option>
+              <option value="">{engineersLoading ? "Loading engineers..." : "Select Engineer"}</option>
 
               {engineers.map((eng) => (
                 <option key={eng.uid} value={eng.uid}>
@@ -580,10 +659,7 @@ function Admin() {
       )}
 
       {!selectedSite && !pageLoading && !sitesLoading && sites.length === 0 && (
-        <EmptyState
-          title="No active sites"
-          subtitle="Create or assign a site to get started"
-        />
+        <EmptyState title="No active sites" subtitle="Create or assign a site to get started" />
       )}
 
       {!selectedSite && !pageLoading && !sitesLoading && sites.length > 0 && (
@@ -633,7 +709,7 @@ function Admin() {
             Current Week: <b>{selectedSite.currentWeekKey || "-"}</b>
           </div>
 
-          {/* ✅ Phase 4.5: Reassign Engineer Panel */}
+          {/* ✅ Reassign Engineer Panel */}
           <div
             style={{
               marginBottom: 12,
@@ -683,8 +759,7 @@ function Admin() {
               background: "#fff",
             }}
           >
-            <b>Summary:</b>{" "}
-            Total: <b>{summary.total}</b> | Pending: <b>{summary.pending}</b> | Done:{" "}
+            <b>Summary:</b> Total: <b>{summary.total}</b> | Pending: <b>{summary.pending}</b> | Done:{" "}
             <b>{summary.done}</b> | Cancelled: <b>{summary.cancelled}</b>
           </div>
 
@@ -727,11 +802,7 @@ function Admin() {
 
           {/* ✅ Add Task */}
           <div style={{ marginBottom: 12 }}>
-            <input
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              placeholder="Task title"
-            />
+            <input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="Task title" />
 
             <select value={newTaskPriority} onChange={(e) => setNewTaskPriority(e.target.value)}>
               <option value="NORMAL">Normal</option>
@@ -757,7 +828,13 @@ function Admin() {
           {!tasksLoading &&
             visibleTasks.map((task) => {
               const badges = getBadges(task);
-              const pendingDays = getPendingDays(task);
+              const pendingDays = (() => {
+                try {
+                  return getPendingDays(task);
+                } catch {
+                  return null;
+                }
+              })();
 
               return (
                 <div key={task.id} style={getTaskCardStyle(task)}>
@@ -801,10 +878,7 @@ function Admin() {
 
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {task.status !== "DONE" && (
-                        <Button
-                          loading={updatingTaskId === task.id}
-                          onClick={() => updateTaskStatus(task.id, "DONE")}
-                        >
+                        <Button loading={updatingTaskId === task.id} onClick={() => updateTaskStatus(task.id, "DONE")}>
                           Mark DONE
                         </Button>
                       )}
@@ -818,10 +892,7 @@ function Admin() {
                         </Button>
                       )}
 
-                      <Button
-                        loading={deletingTaskId === task.id}
-                        onClick={() => deleteTask(task.id)}
-                      >
+                      <Button loading={deletingTaskId === task.id} onClick={() => deleteTask(task.id)}>
                         Delete
                       </Button>
                     </div>
@@ -835,19 +906,11 @@ function Admin() {
       {/* ✅ COMPLETE FLOW */}
       {selectedSite && showCompleteFlow && (
         <div style={{ border: "1px solid red", padding: 12, marginTop: 12 }}>
-          <textarea
-            placeholder="Appreciation"
-            value={appreciation}
-            onChange={(e) => setAppreciation(e.target.value)}
-          />
+          <textarea placeholder="Appreciation" value={appreciation} onChange={(e) => setAppreciation(e.target.value)} />
 
           <label>
-            <input
-              type="checkbox"
-              checked={confirmComplete}
-              onChange={(e) => setConfirmComplete(e.target.checked)}
-            />{" "}
-            I confirm
+            <input type="checkbox" checked={confirmComplete} onChange={(e) => setConfirmComplete(e.target.checked)} /> I
+            confirm
           </label>
 
           <Button loading={completingSite} disabled={!confirmComplete} onClick={() => {}}>
