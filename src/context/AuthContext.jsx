@@ -8,6 +8,10 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+
+  // ✅ userDoc will store Firestore users/{uid} data like {name, role, ...}
+  const [userDoc, setUserDoc] = useState(null);
+
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -16,6 +20,7 @@ export const AuthProvider = ({ children }) => {
       if (!firebaseUser) {
         setUser(null);
         setRole(null);
+        setUserDoc(null);
         setLoading(false);
         return;
       }
@@ -24,8 +29,17 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const snap = await getDoc(doc(db, "users", firebaseUser.uid));
-        setRole(snap.exists() ? snap.data().role : null);
+
+        if (snap.exists()) {
+          const data = snap.data();
+          setUserDoc(data);
+          setRole(data.role || null);
+        } else {
+          setUserDoc(null);
+          setRole(null);
+        }
       } catch {
+        setUserDoc(null);
         setRole(null);
       } finally {
         setLoading(false);
@@ -40,7 +54,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, role }}>
+    <AuthContext.Provider value={{ user, role, userDoc }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,35 +1,54 @@
-import { Routes, Route } from "react-router-dom";
+// src/App.jsx
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
 import Engineer from "./pages/Engineer";
-import Welcome from "./pages/Welcome";
+import Reports from "./pages/Reports";
+
 import ProtectedRoute from "./components/ProtectedRoute";
 
-function App() {
+export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Welcome />} />
+      {/* Default */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+
+      {/* Public */}
       <Route path="/login" element={<Login />} />
 
+      {/* Admin */}
       <Route
         path="/admin"
         element={
-          <ProtectedRoute role="ADMIN">
+          <ProtectedRoute allowedRoles={["admin"]}>
             <Admin />
           </ProtectedRoute>
         }
       />
 
       <Route
+        path="/admin/reports"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <Reports />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Engineer */}
+      <Route
         path="/engineer"
         element={
-          <ProtectedRoute role="ENGINEER">
+          <ProtectedRoute allowedRoles={["engineer"]}>
             <Engineer />
           </ProtectedRoute>
         }
       />
+
+      {/* fallback */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
-
-export default App;
