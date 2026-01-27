@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { auth, db } from "../firebase/firebaseConfig";
@@ -13,14 +13,15 @@ import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { showError } from "../utils/showError";
 import { showSuccess } from "../utils/showSuccess";
 
-import "./Login.css"; // Assuming you add the CSS below to Login.css
+import "./Login.css"; // Updated CSS below
 
 export default function Login() {
   const navigate = useNavigate();
+  const circleRef = useRef(null); // Ref for the circle container
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [light, setLight] = useState(0); // For slider
+  const [showPassword, setShowPassword] = useState(false); // New state for password toggle
 
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingCreateEngineer, setLoadingCreateEngineer] = useState(false);
@@ -139,95 +140,138 @@ export default function Login() {
     }
   };
 
+  // Toggle password visibility
+  const togglePassword = () => {
+    setShowPassword(!showPassword);
+  };
+
+  // Animate bars on mount
+  useEffect(() => {
+    const circleContainer = circleRef.current;
+    const numBars = 50;
+    let activeBars = 0;
+
+    // Create bars
+    for (let i = 0; i < numBars; i++) {
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.transform = `rotate(${(360 / numBars) * i}deg) translateY(-170px)`;
+      circleContainer.appendChild(bar);
+    }
+
+    // Animation function
+    const animateBars = () => {
+      const bars = circleContainer.querySelectorAll('.bar');
+      const interval = setInterval(() => {
+        bars[activeBars % numBars].classList.add('active');
+        if (activeBars > 8) {
+          bars[(activeBars - 8) % numBars].classList.remove('active');
+        }
+        activeBars++;
+      }, 100);
+      return interval;
+    };
+
+    const intervalId = animateBars();
+
+    // Cleanup on unmount
+    return () => {
+      clearInterval(intervalId);
+      // Remove bars to prevent duplicates on re-render
+      while (circleContainer.firstChild) {
+        circleContainer.removeChild(circleContainer.firstChild);
+      }
+    };
+  }, []);
+
   return (
-    <div className="login-container" data-light={light}>
-      {/* Slider form above lamp */}
-      <form className="slider-form">
-        <div className="icon sun">
-          <div className="ray"></div>
-          <div className="ray"></div>
-          <div className="ray"></div>
-          <div className="ray"></div>
-          <div className="ray"></div>
-          <div className="ray"></div>
-          <div className="ray"></div>
-          <div className="ray"></div>
-        </div>
-        <input
-          type="range"
-          id="slider"
-          value={light}
-          min="0"
-          max="10"
-          onChange={(e) => setLight(e.target.value)}
-        />
-      </form>
+    <div className="container">
+      <div className="circle-container" ref={circleRef}></div>
 
-      {/* Lamp in the center */}
-      <div className="lamp-wrapper">
-        <div className="lamp-rope"></div>
-        <div className="lamp">
-          <div className="lamp-part -top">
-            <div className="lamp-part -top-part"></div>
-            <div className="lamp-part -top-part right"></div>
-          </div>
-          <div className="lamp-part -body"></div>
-          <div className="lamp-part -body right"></div>
-          <div className="lamp-part -bottom"></div>
-          <div className="blub"></div>
-        </div>
-        <div className="wall-light-shadow"></div>
-      </div>
+      <div className="login-box">
+        <h2>Login</h2>
 
-      {/* Login form below lamp */}
-      <div className="login-form">
-        <h2>Welcome</h2>
         <form onSubmit={handleLogin}>
-          <div className="form-group">
-            <label htmlFor="email">Email:</label>
+          <div className="input-group">
             <input
               type="email"
-              id="email"
-              name="email"
+              placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
+            <span className="input-icon">
+              <i className="fa-solid fa-envelope" style={{ color: '#ffffff' }}></i>
+            </span>
           </div>
-          <div className="form-group">
-            <label htmlFor="password">Password:</label>
+
+          <div className="input-group">
             <input
-              type="password"
-              id="password"
-              name="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            <span className="input-icon toggle-password" onClick={togglePassword}>
+              <i className="fa-solid fa-lock" style={{ color: '#ffffff' }}></i>
+            </span>
           </div>
+
+          <div className="forgot-password">
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              disabled={loadingReset}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'rgba(255, 255, 255, 0.6)',
+                textDecoration: 'none',
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => (e.target.style.color = '#ffa500')}
+              onMouseLeave={(e) => (e.target.style.color = 'rgba(255, 255, 255, 0.6)')}
+            >
+              {loadingReset ? "Sending..." : "Forgot your password ?"}
+            </button>
+          </div>
+
           <button type="submit" className="login-btn" disabled={loadingLogin}>
-            {loadingLogin ? "Logging in..." : "Login"}
+            {loadingLogin ? "Logging in..." : "LOGIN"}
           </button>
-          {/* Additional buttons */}
-          <button
-            type="button"
-            onClick={onForgotPassword}
-            disabled={loadingReset}
-            className="login-btn"
-            style={{ marginTop: 8 }}
-          >
-            {loadingReset ? "Sending..." : "Forgot Password"}
-          </button>
+        </form>
+
+        <div className="social-login">
+          <p>log in with</p>
+          <div className="social-icons">
+            <div className="social-icon facebook">f</div>
+            <div className="social-icon twitter">𝕏</div>
+            <div className="social-icon google">G</div>
+          </div>
+        </div>
+
+        <div className="signup-link">
           <button
             type="button"
             onClick={createEngineerAccount}
             disabled={loadingCreateEngineer}
-            className="login-btn"
-            style={{ marginTop: 8 }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#ffa500',
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => (e.target.style.color = '#ff8c00')}
+            onMouseLeave={(e) => (e.target.style.color = '#ffa500')}
           >
-            {loadingCreateEngineer ? "Creating..." : "Create Engineer Account (Dev)"}
+            {loadingCreateEngineer ? "Creating..." : "Sign Up"}
           </button>
-        </form>
+        </div>
       </div>
     </div>
   );
