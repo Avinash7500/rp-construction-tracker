@@ -6,10 +6,10 @@ import {
   orderBy,
   serverTimestamp,
 } from "firebase/firestore";
-
 import { db } from "../firebase/firebaseConfig";
 
-// ✅ Add new Site
+/* ---------- SITES ---------- */
+
 export const addSite = async ({ name, location, createdBy }) => {
   const ref = collection(db, "sites");
 
@@ -26,15 +26,53 @@ export const addSite = async ({ name, location, createdBy }) => {
   return docRef.id;
 };
 
-// ✅ Get all Sites
 export const getAllSites = async () => {
   const ref = collection(db, "sites");
   const q = query(ref, orderBy("createdAt", "desc"));
 
   const snap = await getDocs(q);
-
   return snap.docs.map((d) => ({
     id: d.id,
     ...d.data(),
   }));
+};
+
+/* ---------- ENGINEER ADD TASK ---------- */
+
+export const addEngineerTask = async ({
+  title,
+  dayName,
+  site,
+  engineerUid,
+  engineerName,
+}) => {
+  if (!title || !dayName || !site?.id || !site?.currentWeekKey) {
+    throw new Error("Invalid task data");
+  }
+
+  const ref = collection(db, "tasks");
+
+  await addDoc(ref, {
+    title: title.trim(),
+    dayName,
+
+    siteId: site.id,
+    siteName: site.name,
+
+    assignedEngineerId: engineerUid,
+    assignedEngineerName: engineerName,
+
+    weekKey: site.currentWeekKey,
+
+    status: "PENDING",
+    pendingWeeks: 0,
+
+    createdBy: "ENGINEER",
+    createdByUid: engineerUid,
+    createdByName: engineerName,
+
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    statusUpdatedAt: serverTimestamp(),
+  });
 };

@@ -95,6 +95,7 @@ function Admin() {
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("NORMAL");
+  const [newTaskDayName, setNewTaskDayName] = useState("");
 
   const [showCompleteFlow, setShowCompleteFlow] = useState(false);
   const [appreciation, setAppreciation] = useState("");
@@ -300,17 +301,22 @@ function Admin() {
         priority: newTaskPriority,
         pendingWeeks: 0,
 
+        dayName: newTaskDayName || null,
+        createdBy: "ADMIN",
+
         weekKey: selectedSite.currentWeekKey || getISOWeekKey(),
 
         statusUpdatedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        
       });
 
       showSuccess("Task added ✅");
 
       setNewTaskTitle("");
       setNewTaskPriority("NORMAL");
+      setNewTaskDayName("");
 
       await loadTasksBySite(selectedSite.id);
       await loadAllTasksForAdminStats();
@@ -816,6 +822,22 @@ function Admin() {
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
               />
+              {/* 🔥 NEW DAY DROPDOWN */}
+              <select
+                className="admin-add-task__select"
+                value={newTaskDayName}
+                onChange={(e) => setNewTaskDayName(e.target.value)}
+              >
+                <option value="">Select Day</option>
+                <option value="सोमवार">सोमवार</option>
+                <option value="मंगळवार">मंगळवार</option>
+                <option value="बुधवार">बुधवार</option>
+                <option value="गुरुवार">गुरुवार</option>
+                <option value="शुक्रवार">शुक्रवार</option>
+                <option value="शनिवार">शनिवार</option>
+                <option value="रविवार">रविवार</option>
+              </select>
+              
               <select
                 className="admin-add-task__select"
                 value={newTaskPriority}

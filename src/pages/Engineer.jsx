@@ -24,6 +24,9 @@ import { db } from "../firebase/firebaseConfig";
 import { useAuth } from "../context/AuthContext";
 import { carryForwardToNextWeek } from "../services/carryForward";
 
+// 🔥 NEW
+import AddEngineerTaskModal from "../components/AddEngineerTaskModal";
+
 function Engineer() {
   const navigate = useNavigate();
   const { user, userDoc } = useAuth();
@@ -48,18 +51,18 @@ function Engineer() {
 
   const [nextWeekLoading, setNextWeekLoading] = useState(false);
 
-  // ✅ Phase 7.0 Notification popup
   const [showReminders, setShowReminders] = useState(false);
-
-  // optional: scroll top for reminders
   const remindersRef = useRef(null);
+
+  // 🔥 NEW
+  const [showAddTask, setShowAddTask] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setPageLoading(false), 600);
     return () => clearTimeout(t);
   }, []);
 
-  // ✅ Load engineer sites
+  /* ---------------- LOAD ENGINEER SITES ---------------- */
   const loadEngineerSites = async () => {
     try {
       setSitesLoading(true);
@@ -78,12 +81,12 @@ function Engineer() {
 
       const snap = await getDocs(q);
 
-      const data = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-
-      setSites(data);
+      setSites(
+        snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+      );
     } catch (e) {
       console.error(e);
       showError(e, "Failed to load assigned sites");
@@ -92,7 +95,7 @@ function Engineer() {
     }
   };
 
-  // ✅ Load tasks for selected site + current week + engineer id
+  /* ---------------- LOAD TASKS ---------------- */
   const loadTasksBySite = async (site) => {
     try {
       setTasksLoading(true);
@@ -102,34 +105,29 @@ function Engineer() {
       const ref = collection(db, "tasks");
       const weekKey = site?.currentWeekKey;
 
-      let q;
-
-      if (weekKey) {
-        q = query(
-          ref,
-          where("siteId", "==", site.id),
-          where("assignedEngineerId", "==", engineerUid),
-          where("weekKey", "==", weekKey),
-          orderBy("createdAt", "desc")
-        );
-      } else {
-        // fallback for old data
-        q = query(
-          ref,
-          where("siteId", "==", site.id),
-          where("assignedEngineerId", "==", engineerUid),
-          orderBy("createdAt", "desc")
-        );
-      }
+      const q = weekKey
+        ? query(
+            ref,
+            where("siteId", "==", site.id),
+            where("assignedEngineerId", "==", engineerUid),
+            where("weekKey", "==", weekKey),
+            orderBy("createdAt", "desc")
+          )
+        : query(
+            ref,
+            where("siteId", "==", site.id),
+            where("assignedEngineerId", "==", engineerUid),
+            orderBy("createdAt", "desc")
+          );
 
       const snap = await getDocs(q);
 
-      const data = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-
-      setTasks(data);
+      setTasks(
+        snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+      );
     } catch (e) {
       console.error(e);
       showError(e, "Failed to load tasks");
@@ -143,6 +141,7 @@ function Engineer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engineerUid]);
 
+  /* ---------------- LOGOUT ---------------- */
   const handleLogout = async () => {
     try {
       setLoggingOut(true);
@@ -155,14 +154,12 @@ function Engineer() {
     }
   };
 
+  /* ---------------- UPDATE STATUS ---------------- */
   const updateTaskStatus = async (taskId, status) => {
-    if (!selectedSite?.id) return;
-
     try {
       setUpdatingTaskId(taskId);
 
       const ref = doc(db, "tasks", taskId);
-
       await updateDoc(ref, {
         status,
         statusUpdatedAt: serverTimestamp(),
@@ -173,25 +170,23 @@ function Engineer() {
       await loadTasksBySite(selectedSite);
     } catch (e) {
       console.error(e);
-      showError(e, "Failed to update task status");
+      showError(e, "Failed to update task");
     } finally {
       setUpdatingTaskId(null);
     }
   };
 
-  // ✅ Next Week Carry Forward
+  /* ---------------- NEXT WEEK ---------------- */
   const onNextWeek = async () => {
-    if (!selectedSite?.id) return;
-
     const pendingCount = tasks.filter((t) => t.status === "PENDING").length;
 
     if (pendingCount === 0) {
-      showError(null, "No pending tasks to carry forward ✅");
+      showError(null, "No pending tasks to carry forward");
       return;
     }
 
     const ok = window.confirm(
-      `Next Week start करायचा?\n\n✅ Pending tasks carry forward: ${pendingCount}\n❌ Done/Cancelled tasks copy होणार नाहीत\n\nThis cannot be undone.`
+      `Next Week start करायचा?\n\nPending tasks: ${pendingCount}\nThis cannot be undone.`
     );
     if (!ok) return;
 
@@ -201,15 +196,15 @@ function Engineer() {
       const res = await carryForwardToNextWeek(selectedSite.id);
 
       showSuccess(
-        `Next week started ✅ (${res.from} → ${res.to}) | Carried: ${res.carriedCount}`
+        `Next week started (${res.from} → ${res.to}) | Carried: ${res.carriedCount}`
       );
 
       const updatedSite = {
         ...selectedSite,
         currentWeekKey: res.to,
       };
-      setSelectedSite(updatedSite);
 
+      setSelectedSite(updatedSite);
       await loadTasksBySite(updatedSite);
       await loadEngineerSites();
     } catch (e) {
@@ -220,115 +215,31 @@ function Engineer() {
     }
   };
 
-  // ✅ Helpers
+  /* ---------------- HELPERS ---------------- */
   const getPendingDays = (task) => {
-    try {
-      if (!task?.statusUpdatedAt) return null;
-      if (task.status !== "PENDING") return null;
-
-      const d = task.statusUpdatedAt?.toDate?.();
-      if (!d) return null;
-
-      const diffMs = Date.now() - d.getTime();
-      return Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    } catch {
-      return null;
-    }
+    if (!task?.statusUpdatedAt || task.status !== "PENDING") return null;
+    const d = task.statusUpdatedAt?.toDate?.();
+    if (!d) return null;
+    return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
   };
 
-  const getBadges = (task) => {
-    const badges = [];
-
-    const pendingDays = getPendingDays(task);
-
-    if (task.status === "PENDING" && pendingDays !== null && pendingDays >= 3) {
-      badges.push({ type: "OVERDUE", text: `🔥 Overdue ${pendingDays}d` });
-    }
-
-    const pw = task?.pendingWeeks || 0;
-    if (pw >= 1) {
-      badges.push({
-        type: "CARRY",
-        text: `↪ Carried ${pw} week${pw > 1 ? "s" : ""}`,
-      });
-    }
-
-    if (task.priority === "HIGH") {
-      badges.push({ type: "HIGH", text: "⚡ High Priority" });
-    }
-
-    return badges;
-  };
-
-  const getTaskCardStyle = (task) => {
-    const pendingDays = getPendingDays(task);
-    const isOverdue =
-      task.status === "PENDING" && pendingDays !== null && pendingDays >= 3;
-
-    return {
-      border: isOverdue ? "2px solid #000" : "1px solid #ddd",
-      padding: 10,
-      borderRadius: 6,
-      marginBottom: 8,
-      background: isOverdue ? "#fff6f6" : "#fff",
-    };
-  };
-
-  // ✅ Counts
   const counts = useMemo(() => {
     const pending = tasks.filter((t) => t.status === "PENDING").length;
     const done = tasks.filter((t) => t.status === "DONE").length;
     const cancelled = tasks.filter((t) => t.status === "CANCELLED").length;
-
-    // ✅ Phase 7.0 overdue count (pending >= 3 days)
-    const overdue = tasks.filter((t) => {
-      const pd = getPendingDays(t);
-      return t.status === "PENDING" && pd !== null && pd >= 3;
-    }).length;
-
-    return { pending, done, cancelled, overdue };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return { pending, done, cancelled };
   }, [tasks]);
 
   const visibleTasks = tasks.filter((t) =>
     taskFilter === "ALL" ? true : t.status === taskFilter
   );
 
-  const reminderTasks = useMemo(() => {
-    // ✅ only pending tasks, overdue first
-    const list = tasks
-      .filter((t) => t.status === "PENDING")
-      .map((t) => {
-        const pendingDays = getPendingDays(t);
-        const isOverdue = pendingDays !== null && pendingDays >= 3;
-        return {
-          ...t,
-          _pendingDays: pendingDays,
-          _isOverdue: isOverdue,
-        };
-      });
-
-    list.sort((a, b) => {
-      if (a._isOverdue !== b._isOverdue) return a._isOverdue ? -1 : 1;
-      return (b._pendingDays || 0) - (a._pendingDays || 0);
-    });
-
-    return list;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks]);
-
+  /* ---------------- UI ---------------- */
   return (
     <Layout>
       <PageTitle title="Engineer Dashboard" role="Engineer" showBack />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 10,
-          marginBottom: 10,
-        }}
-      >
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
         {!selectedSite ? (
           <div style={{ fontSize: 12 }}>
             Logged in as: <b>{engineerName || "-"}</b>
@@ -351,7 +262,6 @@ function Engineer() {
         </Button>
       </div>
 
-      {/* ✅ Assigned Sites */}
       {!selectedSite && (pageLoading || sitesLoading) && (
         <>
           <SkeletonBox />
@@ -359,213 +269,40 @@ function Engineer() {
         </>
       )}
 
-      {!selectedSite && !pageLoading && !sitesLoading && sites.length === 0 && (
-        <EmptyState
-          title="No sites assigned"
-          subtitle="Please wait for admin to assign you a site"
-        />
+      {!selectedSite && !sitesLoading && sites.length === 0 && (
+        <EmptyState title="No sites assigned" />
       )}
 
-      {!selectedSite && !pageLoading && !sitesLoading && sites.length > 0 && (
-        <div>
-          <h4>Assigned Sites</h4>
-
-          {sites.map((site) => (
-            <div
-              key={site.id}
-              style={{
-                border: "1px solid #ddd",
-                padding: 12,
-                marginBottom: 10,
-                cursor: "pointer",
-              }}
-              onClick={async () => {
-                setSelectedSite(site);
-                setTaskFilter("ALL");
-                await loadTasksBySite(site);
-              }}
-            >
-              <strong>{site.name}</strong>
-              <div style={{ fontSize: 12 }}>
-                Engineer: {site.assignedEngineerName || "-"}
-              </div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>
-                Week: <b>{site.currentWeekKey || "-"}</b>
-              </div>
+      {!selectedSite &&
+        sites.map((site) => (
+          <div
+            key={site.id}
+            style={{ border: "1px solid #ddd", padding: 12, marginBottom: 10 }}
+            onClick={async () => {
+              setSelectedSite(site);
+              await loadTasksBySite(site);
+            }}
+          >
+            <strong>{site.name}</strong>
+            <div style={{ fontSize: 12 }}>
+              Week: <b>{site.currentWeekKey}</b>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
 
-      {/* ✅ Tasks */}
       {selectedSite && (
-        <div>
+        <>
           <h4>{selectedSite.name}</h4>
 
           <div style={{ fontSize: 12, marginBottom: 10 }}>
-            Current Week: <b>{selectedSite.currentWeekKey || "-"}</b>
+            Current Week: <b>{selectedSite.currentWeekKey}</b>
           </div>
 
-          {/* ✅ Phase 7.0 Notification Banner */}
-          <div
-            style={{
-              marginBottom: 12,
-              padding: 12,
-              borderRadius: 10,
-              border: counts.overdue > 0 ? "2px solid #000" : "1px solid #ddd",
-              background: counts.overdue > 0 ? "#fff6f6" : "#fff",
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 10,
-              flexWrap: "wrap",
-              alignItems: "center",
-            }}
-          >
-            <div style={{ fontSize: 12 }}>
-              <b>🔔 Alerts:</b>{" "}
-              {counts.overdue > 0 ? (
-                <>
-                  <span>
-                    🔥 Overdue: <b>{counts.overdue}</b> •{" "}
-                  </span>
-                  <span>
-                    ⏳ Pending: <b>{counts.pending}</b>
-                  </span>
-                </>
-              ) : (
-                <>
-                  ✅ No overdue tasks • Pending: <b>{counts.pending}</b>
-                </>
-              )}
-            </div>
+          {/* 🔥 NEW ADD TASK BUTTON */}
+          <Button onClick={() => setShowAddTask(true)}>➕ Add Task</Button>
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Button
-                onClick={() => {
-                  setShowReminders((v) => !v);
-                  setTimeout(() => {
-                    remindersRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-                  }, 100);
-                }}
-                disabled={counts.pending === 0}
-              >
-                🔔 Reminders
-              </Button>
-
-              <Button
-                onClick={() => {
-                  setTaskFilter("PENDING");
-                  showSuccess("Showing pending tasks ✅");
-                }}
-                disabled={counts.pending === 0}
-              >
-                View Pending →
-              </Button>
-            </div>
-          </div>
-
-          {/* ✅ Phase 4.4.1 Counts */}
-          <div
-            style={{
-              fontSize: 12,
-              marginBottom: 10,
-              padding: 10,
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              background: "#fff",
-            }}
-          >
-            <b>Summary:</b>{" "}
-            Pending: <b>{counts.pending}</b> | Done: <b>{counts.done}</b> | Cancelled:{" "}
-            <b>{counts.cancelled}</b>
-          </div>
-
-          {/* ✅ Reminders Popup */}
-          {showReminders && (
-            <div
-              ref={remindersRef}
-              style={{
-                marginBottom: 12,
-                padding: 12,
-                borderRadius: 10,
-                border: "1px solid #ddd",
-                background: "#f9fafb",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ fontWeight: 800, fontSize: 13 }}>
-                  🔔 Reminder List (Pending Tasks)
-                </div>
-
-                <Button onClick={() => setShowReminders(false)}>✖ Close</Button>
-              </div>
-
-              <div style={{ marginTop: 10 }}>
-                {reminderTasks.length === 0 ? (
-                  <div style={{ fontSize: 12 }}>✅ No pending tasks.</div>
-                ) : (
-                  reminderTasks.slice(0, 25).map((t) => (
-                    <div
-                      key={t.id}
-                      style={{
-                        padding: 10,
-                        borderRadius: 8,
-                        border: t._isOverdue ? "2px solid #000" : "1px solid #ddd",
-                        background: t._isOverdue ? "#fff6f6" : "#fff",
-                        marginBottom: 8,
-                      }}
-                    >
-                      <div style={{ fontWeight: 800 }}>{t.title || "Task"}</div>
-                      <div style={{ fontSize: 12, marginTop: 4 }}>
-                        Week: <b>{t.weekKey || "-"}</b> •{" "}
-                        {t._pendingDays !== null ? (
-                          <>
-                            Pending: <b>{t._pendingDays} day(s)</b>
-                          </>
-                        ) : (
-                          <>Pending: -</>
-                        )}
-                      </div>
-
-                      {t._isOverdue && (
-                        <div style={{ fontSize: 12, marginTop: 6, fontWeight: 800 }}>
-                          🔥 Overdue
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ✅ Next Week button improved */}
-          <div style={{ marginBottom: 12 }}>
-            <Button
-              loading={nextWeekLoading}
-              disabled={counts.pending === 0}
-              onClick={onNextWeek}
-            >
-              {counts.pending === 0
-                ? "➜ Next Week (No Pending)"
-                : `➜ Next Week (Carry Forward ${counts.pending})`}
-            </Button>
-          </div>
-
-          {/* ✅ Status Filter */}
-          <div style={{ marginBottom: 12 }}>
-            <select
-              value={taskFilter}
-              onChange={(e) => setTaskFilter(e.target.value)}
-            >
+          <div style={{ marginTop: 12 }}>
+            <select value={taskFilter} onChange={(e) => setTaskFilter(e.target.value)}>
               <option value="ALL">All</option>
               <option value="PENDING">Pending</option>
               <option value="DONE">Done</option>
@@ -573,106 +310,74 @@ function Engineer() {
             </select>
           </div>
 
-          {tasksLoading && (
-            <>
-              <SkeletonBox />
-              <SkeletonBox />
-            </>
-          )}
+          <div style={{ marginTop: 12 }}>
+            <Button
+              loading={nextWeekLoading}
+              disabled={counts.pending === 0}
+              onClick={onNextWeek}
+            >
+              Next Week (Carry {counts.pending})
+            </Button>
+          </div>
 
-          {!tasksLoading && visibleTasks.length === 0 && (
-            <EmptyState
-              title="No tasks available"
-              subtitle="No tasks in this week (carry forward or wait for admin)"
-            />
-          )}
+          {tasksLoading && <SkeletonBox />}
 
           {!tasksLoading &&
-            visibleTasks.map((task) => {
-              const badges = getBadges(task);
-              const pendingDays = getPendingDays(task);
+            visibleTasks.map((task) => (
+              <div
+                key={task.id}
+                style={{
+                  border: "1px solid #ddd",
+                  padding: 10,
+                  borderRadius: 6,
+                  marginBottom: 8,
+                }}
+              >
+                <strong>{task.title}</strong>
 
-              return (
-                <div key={task.id} style={getTaskCardStyle(task)}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 10,
-                    }}
-                  >
-                    <div>
-                      <strong>{task.title}</strong>
-
-                      <div style={{ fontSize: 12, marginTop: 4 }}>
-                        Status: <b>{task.status}</b> | Priority:{" "}
-                        <b>{task.priority}</b>
-                      </div>
-
-                      <div style={{ fontSize: 12, marginTop: 4 }}>
-                        Week: <b>{task.weekKey || "-"}</b>
-                      </div>
-
-                      {pendingDays !== null && (
-                        <div style={{ fontSize: 12, marginTop: 4 }}>
-                          Pending since: <b>{pendingDays} day(s)</b>
-                        </div>
-                      )}
-
-                      {/* ✅ Badges */}
-                      {badges.length > 0 && (
-                        <div
-                          style={{
-                            marginTop: 6,
-                            display: "flex",
-                            gap: 6,
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          {badges.map((b, idx) => (
-                            <span
-                              key={idx}
-                              style={{
-                                fontSize: 12,
-                                padding: "2px 8px",
-                                borderRadius: 999,
-                                border: "1px solid #ddd",
-                                background: "#f9f9f9",
-                              }}
-                            >
-                              {b.text}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {task.status !== "DONE" && (
-                        <Button
-                          loading={updatingTaskId === task.id}
-                          onClick={() => updateTaskStatus(task.id, "DONE")}
-                        >
-                          Mark DONE
-                        </Button>
-                      )}
-
-                      {task.status !== "CANCELLED" && (
-                        <Button
-                          loading={updatingTaskId === task.id}
-                          onClick={() =>
-                            updateTaskStatus(task.id, "CANCELLED")
-                          }
-                        >
-                          Cancel
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                {/* 🔥 NEW DAY DISPLAY */}
+                <div style={{ fontSize: 12, marginTop: 4 }}>
+                  Day: <b>{task.dayName || "-"}</b>
                 </div>
-              );
-            })}
-        </div>
+
+                <div style={{ fontSize: 12, marginTop: 4 }}>
+                  Status: <b>{task.status}</b>
+                </div>
+
+                <div style={{ marginTop: 6 }}>
+                  {task.status !== "DONE" && (
+                    <Button
+                      loading={updatingTaskId === task.id}
+                      onClick={() => updateTaskStatus(task.id, "DONE")}
+                    >
+                      Mark DONE
+                    </Button>
+                  )}
+                  {task.status !== "CANCELLED" && (
+                    <Button
+                      loading={updatingTaskId === task.id}
+                      onClick={() => updateTaskStatus(task.id, "CANCELLED")}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+        </>
+      )}
+
+      {/* 🔥 NEW ADD TASK MODAL */}
+      {showAddTask && (
+        <AddEngineerTaskModal
+          site={selectedSite}
+          engineerUid={engineerUid}
+          engineerName={engineerName}
+          onClose={() => setShowAddTask(false)}
+          onSuccess={async () => {
+            await loadTasksBySite(selectedSite);
+          }}
+        />
       )}
     </Layout>
   );
