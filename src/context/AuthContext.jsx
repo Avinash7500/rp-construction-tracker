@@ -3,6 +3,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase/firebaseConfig";
 import AppSplash from "../components/AppSplash";
+import { getAuth } from "firebase/auth";
+
 
 const AuthContext = createContext(null);
 
