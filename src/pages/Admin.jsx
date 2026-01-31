@@ -109,13 +109,14 @@ function Admin() {
       const ref = collection(db, "tasks");
       const q = query(ref, where("siteId", "==", siteId), orderBy("createdAt", "desc"));
       const snap = await getDocs(q);
-        const tasksData = snap.docs.map((d) => {const data = d.data();
-          return {
-                    id: d.id,
-                    ...data,
-                    expectedCompletionDate: getExpectedDateWithFallback(data),
-                  };
-                });
+      const tasksData = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          expectedCompletionDate: getExpectedDateWithFallback(data),
+        };
+      });
 
       setTasks(tasksData);
       const weeks = Array.from(new Set(tasksData.map((t) => t.weekKey).filter(Boolean))).sort();
@@ -191,8 +192,8 @@ function Admin() {
 
   const addTask = async () => {
     if (!selectedSite?.id || !newTaskTitle.trim() || !expectedCompletionDate) {
-  return showError(null, "Task description and completion date required");
-  }
+      return showError(null, "Task description and completion date required");
+    }
 
     try {
       setAddingTask(true);
@@ -270,7 +271,9 @@ function Admin() {
       if (!d) return null;
       const diffMs = Date.now() - d.getTime();
       return Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   };
 
   const adminAlertCounts = useMemo(() => {
@@ -295,27 +298,25 @@ function Admin() {
     return badges;
   };
 
-    // NEW: format Firestore Timestamp → 31-Jan-2026
   const formatDueDate = (ts) => {
     if (!ts?.toDate) return "—";
     const d = ts.toDate();
-    return d.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).replace(/ /g, "-");
+    return d
+      .toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+      .replace(/ /g, "-");
   };
 
-      // NEW: overdue based on expected completion date
-    const isOverdueByDate = (task) => {
-      if (task.status !== "PENDING") return false;
-      const due = task.expectedCompletionDate?.toDate?.();
-      if (!due) return false;
-      return new Date() > due;
-    };
+  const isOverdueByDate = (task) => {
+    if (task.status !== "PENDING") return false;
+    const due = task.expectedCompletionDate?.toDate?.();
+    if (!due) return false;
+    return new Date() > due;
+  };
 
-
-    // NEW: silent migration for old tasks (createdAt + 3 days)
   const getExpectedDateWithFallback = (task) => {
     if (task.expectedCompletionDate) return task.expectedCompletionDate;
     if (!task.createdAt?.toDate) return null;
@@ -330,7 +331,7 @@ function Admin() {
   };
 
   const filteredSites = useMemo(() => {
-    return sites.filter(s => s.name.toLowerCase().includes(siteSearch.toLowerCase()));
+    return sites.filter((s) => s.name.toLowerCase().includes(siteSearch.toLowerCase()));
   }, [sites, siteSearch]);
 
   const filteredByWeek = tasks.filter((t) => {
@@ -352,19 +353,15 @@ function Admin() {
   const visibleTasks = filteredByWeek.filter((t) => (taskFilter === "ALL" ? true : t.status === taskFilter));
 
   const sortedVisibleTasks = [...visibleTasks].sort((a, b) => {
-  const ao = isOverdueByDate(a);
-  const bo = isOverdueByDate(b);
-  if (ao && !bo) return -1;
-  if (!ao && bo) return 1;
-  if (ao && bo) {
-    return (
-      b.expectedCompletionDate.toDate() -
-      a.expectedCompletionDate.toDate()
-    );
-  }
-  return 0;
-});
-
+    const ao = isOverdueByDate(a);
+    const bo = isOverdueByDate(b);
+    if (ao && !bo) return -1;
+    if (!ao && bo) return 1;
+    if (ao && bo) {
+      return b.expectedCompletionDate.toDate() - a.expectedCompletionDate.toDate();
+    }
+    return 0;
+  });
 
   const reassignEngineer = async () => {
     if (!selectedSite?.id || !reassignEngineerUid) return showError(null, "Select engineer first");
@@ -413,9 +410,7 @@ function Admin() {
             <span className="header-badge">{role === "admin" ? "Master Admin" : role}</span>
           </div>
           <div className="header-actions">
-            {!selectedSite && (
-              <Button className="btn-primary-header" onClick={() => setShowCreateSite(true)}>+ Create Site</Button>
-            )}
+            {!selectedSite && <Button className="btn-primary-header" onClick={() => setShowCreateSite(true)}>+ Create Site</Button>}
             <Button className="btn-secondary-header" onClick={() => navigate("/admin/reports")}>Analytics</Button>
             <Button className="btn-danger-header" loading={loggingOut} onClick={handleLogout}>Logout</Button>
           </div>
@@ -426,7 +421,8 @@ function Admin() {
             <div className="alert-content">
               <span className="pulse-dot"></span>
               <p>
-                <strong>System Health:</strong> {adminStatsLoading ? "Checking..." : (
+                <strong>System Health:</strong>{" "}
+                {adminStatsLoading ? "Checking..." : (
                   <>Overdue: <b>{adminAlertCounts.overdue}</b> &nbsp;|&nbsp; Pending: <b>{adminAlertCounts.pending}</b></>
                 )}
               </p>
@@ -469,9 +465,7 @@ function Admin() {
                     >
                       <option value="">{engineersLoading ? "⏳ Fetching Engineers..." : "Engineer Name"}</option>
                       {engineers.map((eng) => (
-                        <option key={eng.uid} value={eng.uid}>
-                          👤 {eng.name || eng.email}
-                        </option>
+                        <option key={eng.uid} value={eng.uid}>👤 {eng.name || eng.email}</option>
                       ))}
                     </select>
                   </div>
@@ -573,7 +567,6 @@ function Admin() {
               </aside>
 
               <main className="detail-main">
-                {/* ACTION CONSOLE: ADD NEW TASK */}
                 <section className="task-creation-panel">
                   <div className="panel-header-pro">
                     <h3 className="panel-title-pro">Add New Task for {selectedSite.name}</h3>
@@ -623,16 +616,12 @@ function Admin() {
                           type="button"
                           className={`segment-btn ${newTaskPriority === 'NORMAL' ? 'active' : ''}`}
                           onClick={() => setNewTaskPriority('NORMAL')}
-                        >
-                          Normal
-                        </button>
+                        >Normal</button>
                         <button 
                           type="button"
                           className={`segment-btn high ${newTaskPriority === 'HIGH' ? 'active' : ''}`}
                           onClick={() => setNewTaskPriority('HIGH')}
-                        >
-                          ⚡ High
-                        </button>
+                        >⚡ High</button>
                       </div>
                     </div>
                     <div className="form-item-pro action-span">
@@ -649,44 +638,104 @@ function Admin() {
                   </div>
                 </section>
 
+                {/* IMPROVED TASK LIST UX SECTION */}
                 <div className="task-manager-card">
-                  <div className="task-controls">
-                    <div className="filter-block">
-                      <select className="form-select-inline" value={weekFilter} onChange={(e) => setWeekFilter(e.target.value)}>
-                        <option value="ALL_WEEKS">History: All Weeks</option>
-                        <option value="CURRENT_WEEK">Current Week Only</option>
-                        <option value="WEEK_KEY">Specific Week...</option>
-                      </select>
+                  <div className="task-controls-sticky">
+                    <div className="controls-top-row">
+                      <div className="view-indicator">
+                        <span className="indicator-dot"></span>
+                        <span className="indicator-text">
+                          Showing: <strong>{taskFilter === 'ALL' ? 'All Tasks' : taskFilter}</strong> 
+                          <span className="text-divider">/</span> 
+                          <strong>{weekFilter === 'CURRENT_WEEK' ? 'Current Week' : weekFilter === 'ALL_WEEKS' ? 'Full History' : selectedWeekKey}</strong>
+                        </span>
+                      </div>
+                      <div className="filter-block">
+                        <select className="form-select-inline-v2" value={weekFilter} onChange={(e) => setWeekFilter(e.target.value)}>
+                          <option value="ALL_WEEKS">📅 All Weeks History</option>
+                          <option value="CURRENT_WEEK">📍 Current Week Only</option>
+                          <option value="WEEK_KEY">🔍 Specific Week...</option>
+                        </select>
+                      </div>
                     </div>
-                    <div className="tab-group">
+                    
+                    <div className="tab-group-v2">
                       {statusFilters.map(({ value, label }) => (
-                        <button key={value} className={`tab-btn ${taskFilter === value ? "active" : ""}`} onClick={() => setTaskFilter(value)}>
+                        <button 
+                          key={value} 
+                          className={`tab-btn-v2 ${taskFilter === value ? "active" : ""}`} 
+                          onClick={() => setTaskFilter(value)}
+                        >
                           {label}
+                          <span className="tab-count">
+                            {value === "ALL" ? summary.total : value === "PENDING" ? summary.pending : value === "DONE" ? summary.done : summary.cancelled}
+                          </span>
                         </button>
                       ))}
                     </div>
                   </div>
-                  <div className="task-list">
-                    {tasksLoading ? <SkeletonBox /> : visibleTasks.length === 0 ? <EmptyState title="Clear Desk" /> : (
+
+                  <div className="task-list-v2">
+                    {tasksLoading ? (
+                      <SkeletonBox />
+                    ) : visibleTasks.length === 0 ? (
+                      <div className="empty-state-v2">
+                        <div className="empty-icon">{taskFilter === 'DONE' ? '📋' : '🎉'}</div>
+                        <p className="empty-title">No {taskFilter.toLowerCase()} tasks found</p>
+                        <p className="empty-sub">Try changing your filters or week selection</p>
+                      </div>
+                    ) : (
                       sortedVisibleTasks.map((task) => {
                         const badges = getBadges(task);
-                        const overdue = isTaskOverdue(task);
-                        return (
-                          <div key={task.id} className={`task-row ${isOverdueByDate(task) ? "task-overdue-soft" : ""}`}>
-                            <div className="task-main-info">
-                              <h5 className="task-title">{task.title}</h5>
-                              <div className="task-meta">
-                                <span className="task-due-date">
-  Due: <b>{formatDueDate(task.expectedCompletionDate)}</b>
-</span>
+                        const overdue = isOverdueByDate(task);
+                        const isDone = task.status === "DONE";
 
-                                <span className={`status-tag ${task.status.toLowerCase()}`}>{task.status}</span>
-                                <span>Week: <b>{task.weekKey}</b></span>
+                        return (
+                          <div key={task.id} className={`task-card-v2 ${overdue ? "is-overdue" : ""} ${isDone ? "is-completed" : ""}`}>
+                            {/* 3. FIXED PRIORITY LINE */}
+                            <div className={`task-priority-indicator ${task.priority === 'HIGH' ? 'high-priority' : 'normal-priority'}`}></div>
+
+                            <div className="task-content-main">
+                              <div className="task-primary-row">
+                                <h5 className="task-title-v2">{task.title}</h5>
+                                <div className="badge-container">
+                                  {badges.map((b, i) => (
+                                    <span key={i} className={`ui-badge ${b.type.toLowerCase()}`}>{b.text}</span>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* 1 & 3. ALIGNED METADATA GRID */}
+                              <div className="task-info-grid">
+                                <div className="info-column">
+                                  <span className="info-label">DUE DATE</span>
+                                  <span className={`info-value-date ${overdue ? "date-overdue" : ""}`}>
+                                    {formatDueDate(task.expectedCompletionDate)}
+                                  </span>
+                                </div>
+                                <div className="info-column">
+                                  <span className="info-label">WEEK</span>
+                                  <span className="info-value-bold">{task.weekKey}</span>
+                                </div>
+                                {task.dayName && (
+                                  <div className="info-column">
+                                    <span className="info-label">SCHEDULED</span>
+                                    <span className="info-value-bold">{task.dayName}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                            <div className="task-row-actions">
-                              {task.status !== "DONE" && <button className="action-btn done" onClick={() => updateTaskStatus(task.id, "DONE")}>Done</button>}
-                              <button className="action-btn delete" onClick={() => deleteTask(task.id)}>Delete</button>
+
+                            {/* 2. POLISHED ACTION BUTTONS */}
+                            <div className="task-actions-refined">
+                              {task.status !== "DONE" && (
+                                <button className="btn-pro-action btn-done" onClick={() => updateTaskStatus(task.id, "DONE")}>
+                                  <span className="btn-icon">✓</span> Mark Done
+                                </button>
+                              )}
+                              <button className="btn-pro-action btn-delete" onClick={() => deleteTask(task.id)}>
+                                <span className="btn-icon">✕</span> Delete
+                              </button>
                             </div>
                           </div>
                         );
