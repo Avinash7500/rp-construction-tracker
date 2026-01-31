@@ -1,0 +1,194 @@
+/* src/pages/AdminMaster.css */
+
+.master-page { max-width: 1300px !important; }
+.header-subtitle-v3 { color: #94a3b8; font-size: 0.85rem; margin: 4px 0 0 0; }
+
+.master-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+
+.master-section-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  /* NEW: Ensures card expands to fit pagination footer */
+  display: flex;
+  flex-direction: column;
+  min-height: 600px; 
+}
+
+.section-header-v3 {
+  padding: 1.25rem 1.5rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  /* NEW: Align header items */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title-group { display: flex; align-items: center; gap: 10px; }
+.section-icon { font-size: 1.2rem; }
+.section-heading-v3 { font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0; }
+
+.master-data-table { width: 100%; border-collapse: collapse; }
+.master-data-table th {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.master-data-table td {
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.9rem;
+  color: #1e293b;
+  height: 60px; /* Fixed height for row consistency */
+}
+
+/* NEW: Professional Action Cell Alignment */
+.actions-cell {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+}
+
+.clickable-name {
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.clickable-name:hover { color: #1d4ed8; border-color: #1d4ed8; }
+
+.inline-edit-box { display: flex; gap: 8px; align-items: center; }
+.inline-edit-box input {
+  padding: 6px 10px;
+  border: 2px solid #2563eb;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+  width: 160px;
+}
+
+.inline-edit-box button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.inline-edit-box button:hover { background: #1d4ed8; }
+
+/* NEW: Modern Icon Buttons */
+.action-icon-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.action-icon-btn.edit:hover { 
+  background: #eff6ff; 
+  color: #2563eb; 
+  border-color: #bfdbfe; 
+}
+
+.action-icon-btn.delete:hover { 
+  background: #fef2f2; 
+  color: #ef4444; 
+  border-color: #fecaca; 
+}
+
+.status-dot {
+  height: 8px;
+  width: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+}
+.status-dot.active { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+.status-dot.inactive { background: #94a3b8; }
+
+.site-count-pill {
+  background: #f1f5f9;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.eng-label-v3 { color: #64748b; font-weight: 500; font-size: 0.85rem; }
+
+/* NEW: Professional Pagination Bar */
+.pagination-footer {
+  margin-top: auto;
+  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pagination-info {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.pagination-actions { display: flex; gap: 8px; }
+
+.btn-pagination {
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  background: #0f172a;
+  color: white;
+  border-color: #0f172a;
+}
+
+.btn-pagination:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.text-right { text-align: right; }
+
+@media (max-width: 1024px) {
+  .master-grid { grid-template-columns: 1fr; }
+}

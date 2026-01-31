@@ -411,6 +411,7 @@ function Admin() {
           </div>
           <div className="header-actions">
             {!selectedSite && <Button className="btn-primary-header" onClick={() => setShowCreateSite(true)}>+ Create Site</Button>}
+            <Button className="btn-secondary-header" onClick={() => navigate("/admin/master")}>⚙ Manage Engineers & Sites</Button>
             <Button className="btn-secondary-header" onClick={() => navigate("/admin/reports")}>Analytics</Button>
             <Button className="btn-danger-header" loading={loggingOut} onClick={handleLogout}>Logout</Button>
           </div>

@@ -9,7 +9,7 @@ import Reports from "./pages/Reports";
 import ReportsAdvanced from "./pages/ReportsAdvanced";
 import ReportsSnapshots from "./pages/ReportsSnapshots";
 import ReportsSnapshotDetails from "./pages/ReportsSnapshotDetails";
-
+import AdminMaster from "./pages/AdminMaster";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -21,6 +21,7 @@ export default function App() {
       {/* Public */}
       <Route path="/login" element={<Login />} />
 
+      <Route path="/admin/master" element={<AdminMaster />} />
       {/* Admin */}
       <Route
         path="/admin"
