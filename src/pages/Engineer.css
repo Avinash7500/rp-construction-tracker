@@ -1,0 +1,135 @@
+/* src/pages/Engineer.css */
+
+.engineer-dashboard {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 10px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Header & Profile */
+.engineer-header-card {
+  background: #0f172a;
+  color: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.eng-header-left { display: flex; align-items: center; gap: 16px; }
+.btn-back-eng {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.eng-profile { display: flex; flex-direction: column; }
+.eng-name { font-weight: 700; font-size: 16px; }
+.role-badge { font-size: 11px; text-transform: uppercase; color: #94a3b8; }
+.btn-logout-eng { background: #450a0a !important; color: white !important; font-size: 13px !important; }
+
+/* Sites Grid */
+.sites-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
+.site-card-eng {
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.site-card-eng:hover { transform: translateY(-2px); border-color: #2563eb; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
+.site-name-bold { margin: 0; font-weight: 800; color: #1e293b; }
+.active-dot { height: 8px; width: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
+.site-card-footer { display: flex; justify-content: space-between; font-size: 13px; color: #64748b; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
+
+/* Site Overview */
+.site-overview-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+.active-site-title { margin: 0; font-weight: 800; }
+.week-badge { background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 12px; color: #475569; }
+
+/* --- TASK CREATION PANEL --- */
+.task-creation-panel {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 20px;
+}
+.task-form-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+.input-label-pro { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 6px; display: block; }
+.task-input-pro-v2, .task-select-pro-v2 {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fcfcfc;
+}
+.priority-segmented-control { display: flex; background: #f1f5f9; padding: 3px; border-radius: 8px; }
+.segment-btn { flex: 1; border: none; background: transparent; padding: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 6px; }
+.segment-btn.active { background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+/* Task Filter Tabs */
+.task-controls-eng { margin-bottom: 16px; }
+.filter-tabs { display: inline-flex; background: #f1f5f9; padding: 4px; border-radius: 10px; gap: 4px; }
+.filter-tab { border: none; background: transparent; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.filter-tab.active { background: white; color: #0f172a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.tab-badge { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+
+/* Task Cards */
+.task-card-v2 {
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.status-pending { border-left: 5px solid #f59e0b; background: #fffbeb; }
+.status-done { opacity: 0.6; border-left: 5px solid #10b981; }
+.task-title-bold { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; }
+.task-meta-row { display: flex; gap: 12px; align-items: center; }
+.status-pill { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; }
+.pill-pending { background: #fef3c7; color: #92400e; }
+.pill-done { background: #d1fae5; color: #065f46; }
+
+.task-actions-eng { display: flex; gap: 8px; }
+.act-btn { padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; border: none; }
+.btn-mark-done { background: #10b981; color: white; }
+.btn-cancel-task { background: #f1f5f9; color: #64748b; }
+.btn-add-primary { background: #2563eb; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; }
+
+@media (max-width: 768px) {
+  .task-form-grid { grid-template-columns: 1fr; }
+  .task-card-v2 { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .task-actions-eng { width: 100%; }
+  .act-btn { flex: 1; }
+}

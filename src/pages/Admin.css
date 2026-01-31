@@ -857,3 +857,38 @@
     width: fit-content;
   }
 }
+.sheet-action-card {
+  background: #f8fafc;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 250px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.sheet-action-card:hover {
+  border-color: var(--admin-accent);
+  background: white;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+}
+
+.sheet-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.sheet-label {
+  display: block;
+  font-weight: 800;
+  color: var(--admin-blue);
+  font-size: 1rem;
+}
+
+.sheet-sub {
+  font-size: 0.75rem;
+  color: var(--admin-text-secondary);
+  margin-top: 4px;
+}

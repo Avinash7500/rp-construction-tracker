@@ -12,6 +12,13 @@ import ReportsSnapshotDetails from "./pages/ReportsSnapshotDetails";
 import AdminMaster from "./pages/AdminMaster";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// ✅ ADDED THESE IMPORTS (Make sure these files exist in src/pages/)
+import AccountantDashboard from "./pages/AccountantDashboard";
+import AccountantSiteDetail from "./pages/AccountantSiteDetail";
+import LabourIndex from "./pages/LabourIndex";
+import LabourSheet from "./pages/LabourSheet";
+import MaterialSheet from "./pages/MaterialSheet";
+
 export default function App() {
   return (
     <Routes>
@@ -21,8 +28,36 @@ export default function App() {
       {/* Public */}
       <Route path="/login" element={<Login />} />
 
-      <Route path="/admin/master" element={<AdminMaster />} />
-      {/* Admin */}
+      {/* Accountant MIS Module */}
+      <Route
+        path="/accountant/dashboard"
+        element={
+          <ProtectedRoute allowedRoles={["accountant", "admin"]}>
+            <AccountantDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/accountant/site/:siteId"
+        element={
+          <ProtectedRoute allowedRoles={["accountant", "admin"]}>
+            <AccountantSiteDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Admin Master Management */}
+      <Route
+        path="/admin/master"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminMaster />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Admin Dashboard */}
       <Route
         path="/admin"
         element={
@@ -42,7 +77,7 @@ export default function App() {
         }
       />
 
-      {/* ✅ Advanced Reports */}
+      {/* Advanced Reports */}
       <Route
         path="/admin/reports/advanced"
         element={
@@ -52,7 +87,7 @@ export default function App() {
         }
       />
 
-      {/* ✅ Snapshots list */}
+      {/* Snapshots list */}
       <Route
         path="/admin/reports/snapshots"
         element={
@@ -62,7 +97,7 @@ export default function App() {
         }
       />
 
-      {/* ✅ Snapshot details */}
+      {/* Snapshot details */}
       <Route
         path="/admin/reports/snapshots/:weekKey"
         element={
@@ -72,7 +107,7 @@ export default function App() {
         }
       />
 
-      {/* Engineer */}
+      {/* Engineer Dashboard */}
       <Route
         path="/engineer"
         element={
@@ -82,8 +117,23 @@ export default function App() {
         }
       />
 
-      {/* fallback */}
+      {/* Fallback */}
       <Route path="*" element={<Navigate to="/login" replace />} />
+
+      {/* Labour Sheet Index (Lists Tiles, Department, etc.) */}
+      <Route
+        path="/accountant/site/:siteId/labour"
+        element={<ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}><LabourIndex /></ProtectedRoute>}
+      />
+
+      {/* The Actual Data Entry Sheet */}
+      <Route
+        path="/accountant/site/:siteId/labour/:workType"
+        element={<ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}><LabourSheet /></ProtectedRoute>}
+      />
+
+      <Route path="/accountant/site/:siteId/material" 
+      element={<ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}><MaterialSheet /></ProtectedRoute>} />
     </Routes>
   );
 }

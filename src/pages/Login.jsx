@@ -1,3 +1,4 @@
+// src/pages/Login.jsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -13,15 +14,15 @@ import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { showError } from "../utils/showError";
 import { showSuccess } from "../utils/showSuccess";
 
-import "./Login.css"; // Updated CSS below
+import "./Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
-  const circleRef = useRef(null); // Ref for the circle container
+  const circleRef = useRef(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // New state for password toggle
+  const [showPassword, setShowPassword] = useState(false);
 
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingCreateEngineer, setLoadingCreateEngineer] = useState(false);
@@ -29,25 +30,36 @@ export default function Login() {
 
   // ✅ Redirect by Firestore role
   const redirectByRole = async (uid) => {
-    const userRef = doc(db, "users", uid);
-    const snap = await getDoc(userRef);
+    try {
+      const userRef = doc(db, "users", uid);
+      const snap = await getDoc(userRef);
 
-    if (!snap.exists()) {
-      showError(null, "User profile missing in Firestore. Contact Admin.");
-      return;
-    }
+      if (!snap.exists()) {
+        showError(null, "User profile missing in Firestore. Contact Admin.");
+        return;
+      }
 
-    const userData = snap.data();
+      const userData = snap.data();
 
-    if (!userData?.isActive) {
-      showError(null, "Access disabled. Contact Admin.");
-      return;
-    }
+      if (!userData?.isActive) {
+        showError(null, "Access disabled. Contact Admin.");
+        return;
+      }
 
-    if (userData?.role === "ADMIN") {
-      navigate("/admin");
-    } else {
-      navigate("/engineer");
+      // Updated Role-Based Routing
+      const role = userData?.role?.toUpperCase(); // Convert to uppercase to match rules
+
+      if (role === "ADMIN") {
+        navigate("/admin");
+      } else if (role === "ACCOUNTANT") {
+        navigate("/accountant/dashboard");
+      } else if (role === "ENGINEER") {
+        navigate("/engineer");
+      } else {
+        showError(null, "Unknown user role. Contact Admin.");
+      }
+    } catch (e) {
+      showError(e, "Error identifying user role");
     }
   };
 
@@ -99,7 +111,7 @@ export default function Login() {
       // ✅ create Firestore profile
       await setDoc(doc(db, "users", user.uid), {
         email: user.email || "",
-        role: "ENGINEER", // ✅ default
+        role: "ENGINEER",
         name: "",
         isActive: true,
         createdAt: serverTimestamp(),
@@ -110,12 +122,10 @@ export default function Login() {
       navigate("/engineer");
     } catch (error) {
       console.error(error);
-
       if (error?.code === "auth/email-already-in-use") {
         showError(null, "Email already exists. Please login.");
         return;
       }
-
       showError(error, "Signup failed ❌");
     } finally {
       setLoadingCreateEngineer(false);
@@ -140,18 +150,17 @@ export default function Login() {
     }
   };
 
-  // Toggle password visibility
   const togglePassword = () => {
     setShowPassword(!showPassword);
   };
 
-  // Animate bars on mount
   useEffect(() => {
     const circleContainer = circleRef.current;
+    if (!circleContainer) return;
+    
     const numBars = 50;
     let activeBars = 0;
 
-    // Create bars
     for (let i = 0; i < numBars; i++) {
       const bar = document.createElement('div');
       bar.className = 'bar';
@@ -159,25 +168,19 @@ export default function Login() {
       circleContainer.appendChild(bar);
     }
 
-    // Animation function
-    const animateBars = () => {
+    const intervalId = setInterval(() => {
       const bars = circleContainer.querySelectorAll('.bar');
-      const interval = setInterval(() => {
+      if (bars.length > 0) {
         bars[activeBars % numBars].classList.add('active');
         if (activeBars > 8) {
           bars[(activeBars - 8) % numBars].classList.remove('active');
         }
         activeBars++;
-      }, 100);
-      return interval;
-    };
+      }
+    }, 100);
 
-    const intervalId = animateBars();
-
-    // Cleanup on unmount
     return () => {
       clearInterval(intervalId);
-      // Remove bars to prevent duplicates on re-render
       while (circleContainer.firstChild) {
         circleContainer.removeChild(circleContainer.firstChild);
       }
@@ -223,16 +226,7 @@ export default function Login() {
               type="button"
               onClick={onForgotPassword}
               disabled={loadingReset}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'rgba(255, 255, 255, 0.6)',
-                textDecoration: 'none',
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => (e.target.style.color = '#ffa500')}
-              onMouseLeave={(e) => (e.target.style.color = 'rgba(255, 255, 255, 0.6)')}
+              className="reset-btn-link"
             >
               {loadingReset ? "Sending..." : "Forgot your password ?"}
             </button>
@@ -257,17 +251,7 @@ export default function Login() {
             type="button"
             onClick={createEngineerAccount}
             disabled={loadingCreateEngineer}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#ffa500',
-              textDecoration: 'none',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => (e.target.style.color = '#ff8c00')}
-            onMouseLeave={(e) => (e.target.style.color = '#ffa500')}
+            className="signup-btn-link"
           >
             {loadingCreateEngineer ? "Creating..." : "Sign Up"}
           </button>
