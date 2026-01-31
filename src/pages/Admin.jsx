@@ -410,8 +410,21 @@ function Admin() {
             <span className="header-badge">{role === "admin" ? "Master Admin" : role}</span>
           </div>
           <div className="header-actions">
-            {!selectedSite && <Button className="btn-primary-header" onClick={() => setShowCreateSite(true)}>+ Create Site</Button>}
-            <Button className="btn-secondary-header" onClick={() => navigate("/admin/master")}>⚙ Manage Engineers & Sites</Button>
+            {!selectedSite && (
+              <>
+                <Button className="btn-primary-header" onClick={() => setShowCreateSite(true)}>
+                  + Create Site
+                </Button>
+
+                {/* Moved inside the conditional block to hide when a site is open */}
+                <Button
+                  className="btn-secondary-header"
+                  onClick={() => navigate("/admin/master")}
+                >
+                  ⚙ Manage Engineers & Sites
+                </Button>
+              </>
+            )}
             <Button className="btn-secondary-header" onClick={() => navigate("/admin/reports")}>Analytics</Button>
             <Button className="btn-danger-header" loading={loggingOut} onClick={handleLogout}>Logout</Button>
           </div>
