@@ -57,9 +57,7 @@
 
 .alert-critical { border-color: var(--admin-danger); background: #fff1f2; }
 .pulse-dot { height: 8px; width: 8px; background: var(--admin-success); border-radius: 50%; display: inline-block; margin-right: 8px; animation: pulse 2s infinite; }
-.alert-critical .pulse-dot { background: var(--admin-danger); }
 
-/* Muted Action Buttons */
 .btn-muted-action {
   background: #f1f5f9;
   border: 1px solid var(--admin-border);
@@ -82,7 +80,6 @@
   margin-bottom: 1.5rem;
 }
 
-/* ✅ EGG-SHAPED HIGHLIGHT FOR OPERATIONAL SITES */
 .highlight-pill {
   background: #e2e8f0;
   padding: 8px 24px;
@@ -116,14 +113,98 @@
 }
 .site-card-compact:hover { transform: translateY(-3px); border-color: var(--admin-accent); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
 
-/* ✅ PROJECT NAME HIGHLIGHT */
 .site-name-bold { font-size: 1.1rem; margin: 0; font-weight: 800; color: var(--admin-blue); }
 
 .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
 .card-footer { border-top: 1px solid #f1f5f9; padding-top: 0.75rem; display: flex; flex-direction: column; gap: 4px; }
 .meta-item { font-size: 0.8rem; color: var(--admin-text-secondary); }
 
-/* --- PROFESSIONAL MODAL ENHANCEMENTS --- */
+/* Detail View Layout */
+.detail-grid { display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; margin-top: 1.5rem; }
+.config-card { background: white; padding: 1.25rem; border-radius: 10px; border: 1px solid var(--admin-border); margin-bottom: 1rem; }
+.card-subheading { font-size: 0.9rem; text-transform: uppercase; color: var(--admin-text-secondary); margin-bottom: 1rem; letter-spacing: 0.05em; }
+
+/* Status Pills */
+.status-pill { padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
+.pill-active { background: #dcfce7; color: #166534; }
+.pill-completed { background: #f1f5f9; color: #475569; }
+
+/* --- TASK CREATION CONSOLE --- */
+.task-creation-panel {
+  background: #ffffff;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.panel-header-pro {
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 1rem;
+}
+
+.panel-title-pro { font-size: 1.1rem; font-weight: 800; color: var(--admin-blue); margin: 0 0 4px 0; }
+.panel-subtitle-pro { font-size: 0.8rem; color: var(--admin-text-secondary); margin: 0; }
+
+.task-form-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 1.25rem;
+  align-items: end;
+}
+
+.form-item-pro { display: flex; flex-direction: column; gap: 6px; }
+.input-label-pro { font-size: 0.75rem; font-weight: 700; color: var(--admin-text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+
+.task-input-pro-v2, .task-select-pro-v2 {
+  padding: 10px 14px;
+  border: 1.5px solid var(--admin-border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  background: #fcfcfc;
+}
+
+.priority-segmented-control {
+  display: flex;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+}
+
+.segment-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.segment-btn.active {
+  background: #fff;
+  color: var(--admin-blue);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.btn-add-task-pro {
+  background: var(--admin-blue) !important;
+  color: white !important;
+  font-weight: 700 !important;
+  padding: 10px 24px !important;
+  border-radius: 8px !important;
+  height: 42px;
+}
+
+.btn-add-task-pro:disabled { background: #cbd5e1 !important; cursor: not-allowed; }
+
+/* --- MODAL ENHANCEMENTS --- */
 .modal-create-site { max-width: 480px !important; border-radius: 16px !important; overflow: hidden; padding: 0 !important; }
 .modal-header-pro { background: #f8fafc; padding: 1.5rem 2rem; border-bottom: 1px solid var(--admin-border); }
 .modal-title-main { font-size: 1.25rem; font-weight: 800; color: var(--admin-blue); margin: 0 0 4px 0; }
@@ -131,17 +212,25 @@
 .form-container-pro { padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .form-group-pro { display: flex; flex-direction: column; gap: 6px; }
 .form-label-pro { font-size: 0.85rem; font-weight: 700; color: var(--admin-blue); text-transform: uppercase; letter-spacing: 0.02em; }
-.form-input-pro, .form-select-pro { width: 100%; padding: 12px 16px; border: 1.5px solid var(--admin-border); border-radius: 10px; font-size: 0.95rem; transition: all 0.2s ease; outline: none; background: white; color: var(--admin-text-primary); }
-.form-input-pro:focus, .form-select-pro:focus { border-color: var(--admin-accent); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
-.form-hint-pro { font-size: 0.75rem; color: var(--admin-text-secondary); margin-top: 4px; display: block; }
+.form-input-pro, .form-select-pro { width: 100%; padding: 12px 16px; border: 1.5px solid var(--admin-border); border-radius: 10px; font-size: 0.95rem; outline: none; background: white; color: var(--admin-text-primary); }
 .modal-actions-pro { padding: 1.25rem 2rem; background: #f8fafc; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--admin-border); }
 .btn-ghost-pro { background: transparent !important; color: var(--admin-text-secondary) !important; border: none !important; font-weight: 600 !important; padding: 10px 20px !important; cursor: pointer; }
 .btn-confirm-pro { background: var(--admin-blue) !important; color: white !important; border-radius: 8px !important; padding: 10px 24px !important; font-weight: 700 !important; box-shadow: 0 4px 6px rgba(15, 23, 42, 0.2) !important; transition: transform 0.1s ease !important; }
-.btn-confirm-pro:active { transform: scale(0.98); }
-.btn-confirm-pro:disabled { background: #cbd5e1 !important; box-shadow: none !important; cursor: not-allowed !important; }
 
 @keyframes pulse {
   0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
   70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* --- NEW: Expected Completion Date --- */
+.task-due-date {
+  font-size: 0.75rem;
+  color: var(--admin-text-secondary);
+}
+
+/* --- NEW: Overdue Highlight (soft, existing theme) --- */
+.task-overdue-soft {
+  border-left: 4px solid var(--admin-danger);
+  background: #fff1f2;
 }

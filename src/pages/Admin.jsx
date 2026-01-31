@@ -23,6 +23,7 @@ import {
   updateDoc,
   deleteDoc,
   writeBatch,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { getISOWeekKey } from "../utils/weekUtils";
@@ -48,6 +49,7 @@ function Admin() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("NORMAL");
   const [newTaskDayName, setNewTaskDayName] = useState("");
+  const [expectedCompletionDate, setExpectedCompletionDate] = useState("");
   const [showCompleteFlow, setShowCompleteFlow] = useState(false);
   const [appreciation, setAppreciation] = useState("");
   const [confirmComplete, setConfirmComplete] = useState(false);
@@ -63,7 +65,6 @@ function Admin() {
   const [reassignEngineerUid, setReassignEngineerUid] = useState("");
   const [reassigning, setReassigning] = useState(false);
 
-  // ✅ New Site Search State
   const [siteSearch, setSiteSearch] = useState("");
 
   useEffect(() => {
@@ -108,7 +109,14 @@ function Admin() {
       const ref = collection(db, "tasks");
       const q = query(ref, where("siteId", "==", siteId), orderBy("createdAt", "desc"));
       const snap = await getDocs(q);
-      const tasksData = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const tasksData = snap.docs.map((d) => {const data = d.data();
+          return {
+                    id: d.id,
+                    ...data,
+                    expectedCompletionDate: getExpectedDateWithFallback(data),
+                  };
+                });
+
       setTasks(tasksData);
       const weeks = Array.from(new Set(tasksData.map((t) => t.weekKey).filter(Boolean))).sort();
       setAvailableWeeks(weeks);
@@ -182,7 +190,10 @@ function Admin() {
   };
 
   const addTask = async () => {
-    if (!selectedSite?.id || !newTaskTitle.trim()) return;
+    if (!selectedSite?.id || !newTaskTitle.trim() || !expectedCompletionDate) {
+  return showError(null, "Task description and completion date required");
+  }
+
     try {
       setAddingTask(true);
       const ref = collection(db, "tasks");
@@ -194,6 +205,7 @@ function Admin() {
         priority: newTaskPriority,
         pendingWeeks: 0,
         dayName: newTaskDayName || null,
+        expectedCompletionDate: Timestamp.fromDate(new Date(expectedCompletionDate)),
         createdBy: "ADMIN",
         weekKey: selectedSite.currentWeekKey || getISOWeekKey(),
         statusUpdatedAt: serverTimestamp(),
@@ -204,6 +216,7 @@ function Admin() {
       setNewTaskTitle("");
       setNewTaskPriority("NORMAL");
       setNewTaskDayName("");
+      setExpectedCompletionDate("");
       await loadTasksBySite(selectedSite.id);
       await loadAllTasksForAdminStats();
     } catch (e) {
@@ -282,6 +295,35 @@ function Admin() {
     return badges;
   };
 
+    // NEW: format Firestore Timestamp → 31-Jan-2026
+  const formatDueDate = (ts) => {
+    if (!ts?.toDate) return "—";
+    const d = ts.toDate();
+    return d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).replace(/ /g, "-");
+  };
+
+      // NEW: overdue based on expected completion date
+    const isOverdueByDate = (task) => {
+      if (task.status !== "PENDING") return false;
+      const due = task.expectedCompletionDate?.toDate?.();
+      if (!due) return false;
+      return new Date() > due;
+    };
+
+
+    // NEW: silent migration for old tasks (createdAt + 3 days)
+  const getExpectedDateWithFallback = (task) => {
+    if (task.expectedCompletionDate) return task.expectedCompletionDate;
+    if (!task.createdAt?.toDate) return null;
+    const d = task.createdAt.toDate();
+    d.setDate(d.getDate() + 3);
+    return Timestamp.fromDate(d);
+  };
+
   const isTaskOverdue = (task) => {
     const pendingDays = getPendingDays(task);
     return task.status === "PENDING" && pendingDays !== null && pendingDays >= 3;
@@ -308,6 +350,21 @@ function Admin() {
   }, [filteredByWeek]);
 
   const visibleTasks = filteredByWeek.filter((t) => (taskFilter === "ALL" ? true : t.status === taskFilter));
+
+  const sortedVisibleTasks = [...visibleTasks].sort((a, b) => {
+  const ao = isOverdueByDate(a);
+  const bo = isOverdueByDate(b);
+  if (ao && !bo) return -1;
+  if (!ao && bo) return 1;
+  if (ao && bo) {
+    return (
+      b.expectedCompletionDate.toDate() -
+      a.expectedCompletionDate.toDate()
+    );
+  }
+  return 0;
+});
+
 
   const reassignEngineer = async () => {
     if (!selectedSite?.id || !reassignEngineerUid) return showError(null, "Select engineer first");
@@ -350,7 +407,6 @@ function Admin() {
   return (
     <Layout>
       <div className="admin-dashboard">
-        {/* MAIN HEADER */}
         <header className="admin-header-card">
           <div className="header-info">
             <h1 className="header-title">RP Construction Tracker</h1>
@@ -365,7 +421,6 @@ function Admin() {
           </div>
         </header>
 
-        {/* ALERTS SECTION */}
         {!selectedSite && (
           <div className={`system-alerts-bar ${adminAlertCounts.overdue > 0 ? "alert-critical" : ""}`}>
             <div className="alert-content">
@@ -383,7 +438,6 @@ function Admin() {
           </div>
         )}
 
-        {/* MODAL: CREATE SITE */}
         {!selectedSite && showCreateSite && (
           <div className="modal-overlay" onClick={() => setShowCreateSite(false)}>
             <div className="modal-content modal-create-site" onClick={(e) => e.stopPropagation()}>
@@ -391,7 +445,6 @@ function Admin() {
                 <h3 className="modal-title-main">Create New Construction Site</h3>
                 <p className="modal-subtitle">Register a new project location and assign a lead engineer.</p>
               </div>
-
               <div className="form-container-pro">
                 <div className="form-group-pro">
                   <label className="form-label-pro">Site / Project Name</label>
@@ -403,10 +456,8 @@ function Admin() {
                       onChange={(e) => setNewSiteName(e.target.value)}
                       autoFocus
                     />
-                    <span className="form-hint-pro">This name will be visible to Admin & assigned Engineer.</span>
                   </div>
                 </div>
-
                 <div className="form-group-pro">
                   <label className="form-label-pro">Assign Site Engineer</label>
                   <div className="input-with-hint">
@@ -416,18 +467,16 @@ function Admin() {
                       onChange={(e) => setSelectedEngineerUid(e.target.value)}
                       disabled={engineersLoading}
                     >
-                      <option value="">{engineersLoading ? "⏳ Fetching Engineers..." : "Select lead engineer for this site"}</option>
+                      <option value="">{engineersLoading ? "⏳ Fetching Engineers..." : "Engineer Name"}</option>
                       {engineers.map((eng) => (
                         <option key={eng.uid} value={eng.uid}>
                           👤 {eng.name || eng.email}
                         </option>
                       ))}
                     </select>
-                    <span className="form-hint-pro">The engineer will receive notification for this site access.</span>
                   </div>
                 </div>
               </div>
-
               <div className="modal-actions-pro">
                 <Button className="btn-ghost-pro" onClick={() => setShowCreateSite(false)} disabled={creatingSite}>Cancel</Button>
                 <Button 
@@ -443,7 +492,6 @@ function Admin() {
           </div>
         )}
 
-        {/* SITES LIST */}
         {!selectedSite && (
           <section className="sites-section">
             <div className="sites-section-header">
@@ -491,7 +539,6 @@ function Admin() {
           </section>
         )}
 
-        {/* SITE DETAIL VIEW */}
         {selectedSite && !showCompleteFlow && (
           <div className="detail-view">
             <Button className="btn-back" onClick={() => setSelectedSite(null)}>← Back to Sites</Button>
@@ -526,6 +573,82 @@ function Admin() {
               </aside>
 
               <main className="detail-main">
+                {/* ACTION CONSOLE: ADD NEW TASK */}
+                <section className="task-creation-panel">
+                  <div className="panel-header-pro">
+                    <h3 className="panel-title-pro">Add New Task for {selectedSite.name}</h3>
+                    <p className="panel-subtitle-pro">Define work requirements, priority levels, and scheduled days.</p>
+                  </div>
+
+                  <div className="task-form-grid">
+                    <div className="form-item-pro title-span">
+                      <label className="input-label-pro">Task Description</label>
+                      <input
+                        className="task-input-pro-v2"
+                        placeholder="e.g. Pour concrete for slab"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && newTaskTitle.trim() && addTask()}
+                      />
+                    </div>
+                    <div className="form-item-pro">
+                      <label className="input-label-pro">Scheduled Day</label>
+                      <select 
+                        className="task-select-pro-v2"
+                        value={newTaskDayName} 
+                        onChange={(e) => setNewTaskDayName(e.target.value)}
+                      >
+                        <option value="">Any Day</option>
+                        {["सोमवार", "मंगळवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार", "रविवार"].map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-item-pro">
+                      <label className="input-label-pro">Completion Date</label>
+                      <input
+                        type="date"
+                        className="task-input-pro-v2" 
+                        value={expectedCompletionDate}
+                        min={new Date().toISOString().split("T")[0]}
+                        onChange={(e) => setExpectedCompletionDate(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-item-pro">
+                      <label className="input-label-pro">Priority</label>
+                      <div className="priority-segmented-control">
+                        <button 
+                          type="button"
+                          className={`segment-btn ${newTaskPriority === 'NORMAL' ? 'active' : ''}`}
+                          onClick={() => setNewTaskPriority('NORMAL')}
+                        >
+                          Normal
+                        </button>
+                        <button 
+                          type="button"
+                          className={`segment-btn high ${newTaskPriority === 'HIGH' ? 'active' : ''}`}
+                          onClick={() => setNewTaskPriority('HIGH')}
+                        >
+                          ⚡ High
+                        </button>
+                      </div>
+                    </div>
+                    <div className="form-item-pro action-span">
+                      <label className="input-label-pro">&nbsp;</label>
+                      <Button 
+                        className="btn-add-task-pro" 
+                        loading={addingTask} 
+                        onClick={addTask}
+                        disabled={!newTaskTitle.trim()}
+                      >
+                        <span>+ Add Task</span>
+                      </Button>
+                    </div>
+                  </div>
+                </section>
+
                 <div className="task-manager-card">
                   <div className="task-controls">
                     <div className="filter-block">
@@ -543,20 +666,20 @@ function Admin() {
                       ))}
                     </div>
                   </div>
-                  <div className="add-task-bar">
-                    <input className="task-input" placeholder="Enter task details..." value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} />
-                    <Button className="btn-add" loading={addingTask} onClick={addTask}>Add</Button>
-                  </div>
                   <div className="task-list">
                     {tasksLoading ? <SkeletonBox /> : visibleTasks.length === 0 ? <EmptyState title="Clear Desk" /> : (
-                      visibleTasks.map((task) => {
+                      sortedVisibleTasks.map((task) => {
                         const badges = getBadges(task);
                         const overdue = isTaskOverdue(task);
                         return (
-                          <div key={task.id} className={`task-row ${overdue ? "task-overdue" : ""}`}>
+                          <div key={task.id} className={`task-row ${isOverdueByDate(task) ? "task-overdue-soft" : ""}`}>
                             <div className="task-main-info">
                               <h5 className="task-title">{task.title}</h5>
                               <div className="task-meta">
+                                <span className="task-due-date">
+  Due: <b>{formatDueDate(task.expectedCompletionDate)}</b>
+</span>
+
                                 <span className={`status-tag ${task.status.toLowerCase()}`}>{task.status}</span>
                                 <span>Week: <b>{task.weekKey}</b></span>
                               </div>
