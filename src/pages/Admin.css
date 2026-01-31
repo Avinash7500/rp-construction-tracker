@@ -572,3 +572,288 @@
   opacity: 0.7;
   border-style: dashed;
 }
+
+/* ... [Existing Lines 1 to 574 remain exactly as they are] ... */
+
+/* --- 4. SITE VIEW UI UPGRADES (NEW) --- */
+
+.sticky-back-container {
+  margin-bottom: 1.5rem;
+}
+
+.btn-back-pro {
+  background: white;
+  border: 1px solid var(--admin-border);
+  padding: 8px 16px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.btn-back-pro:hover {
+  border-color: var(--admin-accent);
+  transform: translateX(-4px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+
+.back-icon {
+  font-size: 1.2rem;
+  color: var(--admin-accent);
+  font-weight: bold;
+}
+
+.back-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.back-label {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--admin-blue);
+  line-height: 1;
+}
+
+.back-sub {
+  font-size: 0.7rem;
+  color: var(--admin-text-secondary);
+}
+
+/* Configuration Card Pro */
+.config-card-pro {
+  background: white;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.card-header-v3 {
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--admin-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-heading-v3 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--admin-text-secondary);
+  font-weight: 800;
+  margin: 0;
+}
+
+.card-dot-v3 {
+  width: 6px;
+  height: 6px;
+  background: var(--admin-accent);
+  border-radius: 50%;
+}
+
+.config-body-v3 {
+  padding: 16px;
+}
+
+.config-label-v3 {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--admin-blue);
+  margin-bottom: 4px;
+}
+
+.config-help-v3 {
+  font-size: 0.7rem;
+  color: var(--admin-text-secondary);
+  margin-bottom: 12px;
+}
+
+.config-action-row {
+  display: flex;
+  gap: 8px;
+}
+
+.form-select-pro-sm {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  font-size: 0.85rem;
+  background: #fcfcfc;
+}
+
+.btn-reassign-v3 {
+  background: var(--admin-blue) !important;
+  color: white !important;
+  padding: 0 16px !important;
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+}
+
+/* Visual Meter Graph */
+.summary-body-v3 {
+  padding: 20px 16px;
+  text-align: center;
+}
+
+.visual-meter-v3 {
+  height: 12px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  display: flex;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.meter-segment {
+  height: 100%;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.segment-done { background: var(--admin-success); }
+.segment-pending { background: var(--admin-warning); }
+.segment-cancelled { background: #cbd5e1; }
+
+.stats-list-v3 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.stat-item-v3 {
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.stat-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 10px;
+}
+
+.dot-done { background: var(--admin-success); }
+.dot-pending { background: var(--admin-warning); }
+.dot-total { background: var(--admin-blue); }
+
+.stat-label { color: var(--admin-text-secondary); flex: 1; text-align: left; }
+.stat-value { font-weight: 800; color: var(--admin-blue); }
+
+.completion-v3 {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.completion-pct {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: var(--admin-blue);
+  line-height: 1;
+}
+
+.completion-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--admin-text-secondary);
+  letter-spacing: 0.05em;
+}
+
+.empty-progress-v3 {
+  font-size: 0.8rem;
+  color: var(--admin-text-secondary);
+  padding: 20px 0;
+}
+
+/* --- 6. PROFESSIONAL ENGINEER BADGE & ALIGNMENT --- */
+
+.sticky-back-header-v5 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Ensures perfect vertical centering in line */
+  margin-bottom: 2.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.engineer-badge-pill {
+  background: white;
+  border: 1px solid var(--admin-border);
+  padding: 8px 24px;
+  border-radius: 12px; /* Matches back button shape */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.engineer-badge-pill:hover {
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+}
+
+.badge-content-v5 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* Aligns text to the right for balance */
+}
+
+.eng-label-v5 {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  color: var(--admin-text-secondary);
+  margin-bottom: 2px;
+}
+
+.eng-name-wrap-v5 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.eng-icon-v5 {
+  font-size: 1.2rem;
+  filter: grayscale(1);
+}
+
+.eng-name-v5 {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.35rem; 
+  font-weight: 900; /* Extra bold and professional */
+  color: #1d4ed8; /* Professional Royal Blue */
+  margin: 0;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+/* Tablet/Mobile Adjustment */
+@media (max-width: 768px) {
+  .sticky-back-header-v5 {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
+  }
+  .badge-content-v5 {
+    align-items: flex-start;
+  }
+  .engineer-badge-pill {
+    width: fit-content;
+  }
+}

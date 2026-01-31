@@ -473,9 +473,9 @@ function Admin() {
               </div>
               <div className="modal-actions-pro">
                 <Button className="btn-ghost-pro" onClick={() => setShowCreateSite(false)} disabled={creatingSite}>Cancel</Button>
-                <Button 
-                  className="btn-confirm-pro" 
-                  loading={creatingSite} 
+                <Button
+                  className="btn-confirm-pro"
+                  loading={creatingSite}
                   onClick={handleCreateSite}
                   disabled={!newSiteName.trim() || !selectedEngineerUid}
                 >
@@ -493,10 +493,10 @@ function Admin() {
                 <h2 className="section-heading">Operational Sites</h2>
               </div>
               <div className="site-search-wrap">
-                <input 
-                  type="text" 
-                  className="site-search-input" 
-                  placeholder="🔍 Search site name..." 
+                <input
+                  type="text"
+                  className="site-search-input"
+                  placeholder="🔍 Search site name..."
                   value={siteSearch}
                   onChange={(e) => setSiteSearch(e.target.value)}
                 />
@@ -535,33 +535,117 @@ function Admin() {
 
         {selectedSite && !showCompleteFlow && (
           <div className="detail-view">
-            <Button className="btn-back" onClick={() => setSelectedSite(null)}>← Back to Sites</Button>
-            <div className="detail-grid">
-              <aside className="detail-config">
-                <div className="config-card">
-                  <h3 className="card-subheading">Site Configuration</h3>
-                  <div className="config-row">
-                    <label>Assigned Engineer</label>
-                    <select
-                      className="form-select-sm"
-                      value={reassignEngineerUid}
-                      onChange={(e) => setReassignEngineerUid(e.target.value)}
-                      disabled={engineersLoading || reassigning}
-                    >
-                      <option value="">Transfer Site...</option>
-                      {engineers.map((eng) => (
-                        <option key={eng.uid} value={eng.uid}>{eng.name || eng.email}</option>
-                      ))}
-                    </select>
-                    <Button className="btn-primary-sm" loading={reassigning} onClick={reassignEngineer}>Reassign</Button>
+            <div className="sticky-back-header-v5">
+              <button className="btn-back-pro" onClick={() => setSelectedSite(null)}>
+                <span className="back-icon">←</span>
+                <div className="back-text">
+                  <span className="back-label">Back to Project Dashboard</span>
+                </div>
+              </button>
+              <div className="engineer-badge-pill">
+                <div className="badge-content-v5">
+                  <span className="eng-label-v5">Project Engineer</span>
+                  <div className="eng-name-wrap-v5">
+                    <span className="eng-icon-v5">👤</span>
+                    <h2 className="eng-name-v5">
+                      {selectedSite.assignedEngineerName || "Not Assigned"}
+                    </h2>
                   </div>
                 </div>
-                <div className="config-card">
-                  <h3 className="card-subheading">Quick Summary</h3>
-                  <div className="stats-chips">
-                    <div className="stat-chip"><span>Total</span> <b>{summary.total}</b></div>
-                    <div className="stat-chip highlight"><span>Pending</span> <b>{summary.pending}</b></div>
-                    <div className="stat-chip"><span>Done</span> <b>{summary.done}</b></div>
+              </div>
+            </div>
+
+            <div className="detail-grid">
+              <aside className="detail-config">
+                <div className="config-card-pro">
+                  <div className="card-header-v3">
+                    <h3 className="card-heading-v3">Site Configuration</h3>
+                    <span className="card-dot-v3"></span>
+                  </div>
+                  <div className="config-body-v3">
+                    <div className="config-group-v3">
+                      <label className="config-label-v3">Assigned Site Engineer</label>
+                      <p className="config-help-v3">Reassigning affects only current and future week tasks.</p>
+                      <div className="config-action-row">
+                        <select
+                          className="form-select-pro-sm"
+                          value={reassignEngineerUid}
+                          onChange={(e) => setReassignEngineerUid(e.target.value)}
+                          disabled={engineersLoading || reassigning}
+                        >
+                          <option value="">Choose Engineer...</option>
+                          {engineers.map((eng) => (
+                            <option key={eng.uid} value={eng.uid}>{eng.name || eng.email}</option>
+                          ))}
+                        </select>
+                        <Button
+                          className="btn-reassign-v3"
+                          loading={reassigning}
+                          onClick={reassignEngineer}
+                          disabled={!reassignEngineerUid}
+                        >
+                          Update
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="config-card-pro summary-card-v3">
+                  <div className="card-header-v3">
+                    <h3 className="card-heading-v3">Completion Health</h3>
+                  </div>
+                  <div className="summary-body-v3">
+                    {summary.total > 0 ? (
+                      <>
+                        <div className="visual-meter-v3">
+                          <div
+                            className="meter-segment segment-done"
+                            style={{ width: `${(summary.done / summary.total) * 100}%` }}
+                            title={`Done: ${summary.done}`}
+                          ></div>
+                          <div
+                            className="meter-segment segment-pending"
+                            style={{ width: `${(summary.pending / summary.total) * 100}%` }}
+                            title={`Pending: ${summary.pending}`}
+                          ></div>
+                          <div
+                            className="meter-segment segment-cancelled"
+                            style={{ width: `${(summary.cancelled / summary.total) * 100}%` }}
+                            title={`Cancelled: ${summary.cancelled}`}
+                          ></div>
+                        </div>
+
+                        <div className="stats-list-v3">
+                          <div className="stat-item-v3">
+                            <span className="stat-indicator dot-done"></span>
+                            <span className="stat-label">Done</span>
+                            <span className="stat-value">{summary.done}</span>
+                          </div>
+                          <div className="stat-item-v3">
+                            <span className="stat-indicator dot-pending"></span>
+                            <span className="stat-label">Pending</span>
+                            <span className="stat-value">{summary.pending}</span>
+                          </div>
+                          <div className="stat-item-v3">
+                            <span className="stat-indicator dot-total"></span>
+                            <span className="stat-label">Total Tasks</span>
+                            <span className="stat-value">{summary.total}</span>
+                          </div>
+                        </div>
+
+                        <div className="completion-v3">
+                          <span className="completion-pct">
+                            {Math.round((summary.done / summary.total) * 100)}%
+                          </span>
+                          <span className="completion-label">Site Progress</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="empty-progress-v3">
+                        <p>No task data available for visuals.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </aside>
@@ -586,9 +670,9 @@ function Admin() {
                     </div>
                     <div className="form-item-pro">
                       <label className="input-label-pro">Scheduled Day</label>
-                      <select 
+                      <select
                         className="task-select-pro-v2"
-                        value={newTaskDayName} 
+                        value={newTaskDayName}
                         onChange={(e) => setNewTaskDayName(e.target.value)}
                       >
                         <option value="">Any Day</option>
@@ -602,7 +686,7 @@ function Admin() {
                       <label className="input-label-pro">Completion Date</label>
                       <input
                         type="date"
-                        className="task-input-pro-v2" 
+                        className="task-input-pro-v2"
                         value={expectedCompletionDate}
                         min={new Date().toISOString().split("T")[0]}
                         onChange={(e) => setExpectedCompletionDate(e.target.value)}
@@ -612,12 +696,12 @@ function Admin() {
                     <div className="form-item-pro">
                       <label className="input-label-pro">Priority</label>
                       <div className="priority-segmented-control">
-                        <button 
+                        <button
                           type="button"
                           className={`segment-btn ${newTaskPriority === 'NORMAL' ? 'active' : ''}`}
                           onClick={() => setNewTaskPriority('NORMAL')}
                         >Normal</button>
-                        <button 
+                        <button
                           type="button"
                           className={`segment-btn high ${newTaskPriority === 'HIGH' ? 'active' : ''}`}
                           onClick={() => setNewTaskPriority('HIGH')}
@@ -626,9 +710,9 @@ function Admin() {
                     </div>
                     <div className="form-item-pro action-span">
                       <label className="input-label-pro">&nbsp;</label>
-                      <Button 
-                        className="btn-add-task-pro" 
-                        loading={addingTask} 
+                      <Button
+                        className="btn-add-task-pro"
+                        loading={addingTask}
                         onClick={addTask}
                         disabled={!newTaskTitle.trim()}
                       >
@@ -638,15 +722,14 @@ function Admin() {
                   </div>
                 </section>
 
-                {/* IMPROVED TASK LIST UX SECTION */}
                 <div className="task-manager-card">
                   <div className="task-controls-sticky">
                     <div className="controls-top-row">
                       <div className="view-indicator">
                         <span className="indicator-dot"></span>
                         <span className="indicator-text">
-                          Showing: <strong>{taskFilter === 'ALL' ? 'All Tasks' : taskFilter}</strong> 
-                          <span className="text-divider">/</span> 
+                          Showing: <strong>{taskFilter === 'ALL' ? 'All Tasks' : taskFilter}</strong>
+                          <span className="text-divider">/</span>
                           <strong>{weekFilter === 'CURRENT_WEEK' ? 'Current Week' : weekFilter === 'ALL_WEEKS' ? 'Full History' : selectedWeekKey}</strong>
                         </span>
                       </div>
@@ -658,12 +741,12 @@ function Admin() {
                         </select>
                       </div>
                     </div>
-                    
+
                     <div className="tab-group-v2">
                       {statusFilters.map(({ value, label }) => (
-                        <button 
-                          key={value} 
-                          className={`tab-btn-v2 ${taskFilter === value ? "active" : ""}`} 
+                        <button
+                          key={value}
+                          className={`tab-btn-v2 ${taskFilter === value ? "active" : ""}`}
                           onClick={() => setTaskFilter(value)}
                         >
                           {label}
@@ -692,7 +775,6 @@ function Admin() {
 
                         return (
                           <div key={task.id} className={`task-card-v2 ${overdue ? "is-overdue" : ""} ${isDone ? "is-completed" : ""}`}>
-                            {/* 3. FIXED PRIORITY LINE */}
                             <div className={`task-priority-indicator ${task.priority === 'HIGH' ? 'high-priority' : 'normal-priority'}`}></div>
 
                             <div className="task-content-main">
@@ -705,7 +787,6 @@ function Admin() {
                                 </div>
                               </div>
 
-                              {/* 1 & 3. ALIGNED METADATA GRID */}
                               <div className="task-info-grid">
                                 <div className="info-column">
                                   <span className="info-label">DUE DATE</span>
@@ -726,7 +807,6 @@ function Admin() {
                               </div>
                             </div>
 
-                            {/* 2. POLISHED ACTION BUTTONS */}
                             <div className="task-actions-refined">
                               {task.status !== "DONE" && (
                                 <button className="btn-pro-action btn-done" onClick={() => updateTaskStatus(task.id, "DONE")}>
