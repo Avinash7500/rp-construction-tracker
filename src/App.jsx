@@ -3,6 +3,7 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./pages/Login";
+import Signup from "./pages/Signup"; // ✅ Added Signup import
 import Admin from "./pages/Admin";
 import Engineer from "./pages/Engineer";
 import Reports from "./pages/Reports";
@@ -12,7 +13,7 @@ import ReportsSnapshotDetails from "./pages/ReportsSnapshotDetails";
 import AdminMaster from "./pages/AdminMaster";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// ✅ ADDED THESE IMPORTS (Make sure these files exist in src/pages/)
+// ✅ Accountant MIS Module Imports
 import AccountantDashboard from "./pages/AccountantDashboard";
 import AccountantSiteDetail from "./pages/AccountantSiteDetail";
 import LabourIndex from "./pages/LabourIndex";
@@ -25,14 +26,15 @@ export default function App() {
       {/* Default */}
       <Route path="/" element={<Navigate to="/login" replace />} />
 
-      {/* Public */}
+      {/* Public Routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} /> {/* ✅ Added Signup Route */}
 
       {/* Accountant MIS Module */}
       <Route
         path="/accountant/dashboard"
         element={
-          <ProtectedRoute allowedRoles={["accountant", "admin"]}>
+          <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
             <AccountantDashboard />
           </ProtectedRoute>
         }
@@ -41,17 +43,44 @@ export default function App() {
       <Route
         path="/accountant/site/:siteId"
         element={
-          <ProtectedRoute allowedRoles={["accountant", "admin"]}>
+          <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
             <AccountantSiteDetail />
           </ProtectedRoute>
         }
+      />
+
+      <Route
+        path="/accountant/site/:siteId/labour"
+        element={
+          <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
+            <LabourIndex />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/accountant/site/:siteId/labour/:workType"
+        element={
+          <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
+            <LabourSheet />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route 
+        path="/accountant/site/:siteId/material" 
+        element={
+          <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
+            <MaterialSheet />
+          </ProtectedRoute>
+        } 
       />
 
       {/* Admin Master Management */}
       <Route
         path="/admin/master"
         element={
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
             <AdminMaster />
           </ProtectedRoute>
         }
@@ -61,7 +90,7 @@ export default function App() {
       <Route
         path="/admin"
         element={
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
             <Admin />
           </ProtectedRoute>
         }
@@ -71,7 +100,7 @@ export default function App() {
       <Route
         path="/admin/reports"
         element={
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
             <Reports />
           </ProtectedRoute>
         }
@@ -81,7 +110,7 @@ export default function App() {
       <Route
         path="/admin/reports/advanced"
         element={
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
             <ReportsAdvanced />
           </ProtectedRoute>
         }
@@ -91,7 +120,7 @@ export default function App() {
       <Route
         path="/admin/reports/snapshots"
         element={
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
             <ReportsSnapshots />
           </ProtectedRoute>
         }
@@ -101,7 +130,7 @@ export default function App() {
       <Route
         path="/admin/reports/snapshots/:weekKey"
         element={
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
             <ReportsSnapshotDetails />
           </ProtectedRoute>
         }
@@ -111,7 +140,7 @@ export default function App() {
       <Route
         path="/engineer"
         element={
-          <ProtectedRoute allowedRoles={["engineer"]}>
+          <ProtectedRoute allowedRoles={["ENGINEER"]}>
             <Engineer />
           </ProtectedRoute>
         }
@@ -119,21 +148,6 @@ export default function App() {
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/login" replace />} />
-
-      {/* Labour Sheet Index (Lists Tiles, Department, etc.) */}
-      <Route
-        path="/accountant/site/:siteId/labour"
-        element={<ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}><LabourIndex /></ProtectedRoute>}
-      />
-
-      {/* The Actual Data Entry Sheet */}
-      <Route
-        path="/accountant/site/:siteId/labour/:workType"
-        element={<ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}><LabourSheet /></ProtectedRoute>}
-      />
-
-      <Route path="/accountant/site/:siteId/material" 
-      element={<ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}><MaterialSheet /></ProtectedRoute>} />
     </Routes>
   );
 }

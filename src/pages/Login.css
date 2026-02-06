@@ -203,3 +203,53 @@ h2 {
 .toggle-password {
   cursor: pointer;
 }
+
+/* Updated Forgot Password Button */
+.reset-btn-link {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 5px 0;
+  border-bottom: 1px solid transparent;
+}
+
+.reset-btn-link:hover {
+  color: #ffa500;
+  border-bottom: 1px solid #ffa500;
+  text-shadow: 0 0 8px rgba(255, 165, 0, 0.6);
+}
+
+/* Updated Signup Section */
+.signup-link p {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
+
+.signup-btn-link {
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05); /* Glass effect */
+  border: 1px solid rgba(255, 165, 0, 0.4);
+  border-radius: 25px;
+  color: #ffa500;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.signup-btn-link:hover {
+  background: rgba(255, 165, 0, 0.1);
+  border-color: #ffa500;
+  box-shadow: 0 0 15px rgba(255, 165, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+.signup-btn-link:active {
+  transform: scale(0.98);
+}
