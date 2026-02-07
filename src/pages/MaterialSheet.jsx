@@ -1,7 +1,7 @@
 // src/pages/MaterialSheet.jsx
 import React, { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { doc, getDoc, collection, query, where, getDocs, writeBatch, serverTimestamp } from "firebase/firestore";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { doc, getDoc, collection, query, where, getDocs, writeBatch, serverTimestamp, orderBy } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import Layout from "../components/Layout";
 import Button from "../components/Button";
@@ -10,23 +10,32 @@ import { showError } from "../utils/showError";
 
 const MARATHI_DAYS = ["रविवार", "सोमवार", "मंगळवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार"];
 
+// 🔥 HELPER: Get Week Key from Date (Matches your system format: YYYY-Www)
+const getWeekKeyFromDate = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+};
+
 function MaterialSheet() {
   const { siteId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  const queryParams = new URLSearchParams(location.search);
+  const historyWeek = queryParams.get("week");
+
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // Initialize with 7 rows
-  const [rows, setRows] = useState(
-    MARATHI_DAYS.map((day) => ({
-      dayName: day,
-      date: "", // Now controlled by type="date"
-      details: "",
-      qty: 0,
-      rate: 0,
-    }))
-  );
+  const [isLocked, setIsLocked] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  
+  const [rows, setRows] = useState([]);
+  const [dealers, setDealers] = useState([]);
 
   useEffect(() => {
     const loadMaterialData = async () => {
@@ -36,34 +45,80 @@ function MaterialSheet() {
           const siteData = siteSnap.data();
           setSite({ id: siteSnap.id, ...siteData });
 
+          const targetWeek = historyWeek || siteData.currentWeekKey;
+          if (historyWeek && historyWeek !== siteData.currentWeekKey) setIsReadOnly(true);
+
           const q = query(
             collection(db, "material_entries"),
             where("siteId", "==", siteId),
-            where("weekKey", "==", siteData.currentWeekKey)
+            where("weekKey", "==", targetWeek)
           );
           const snap = await getDocs(q);
           
           if (!snap.empty) {
-            const existingData = snap.docs.map(d => d.data());
-            const mergedRows = MARATHI_DAYS.map(day => {
-              const found = existingData.find(d => d.dayName === day);
-              return found || { dayName: day, date: "", details: "", qty: 0, rate: 0 };
-            });
-            setRows(mergedRows);
+            const existingData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            if (!historyWeek) {
+              const lastSaved = existingData[0]?.updatedAt?.toDate();
+              if (lastSaved && Math.ceil(Math.abs(new Date() - lastSaved) / (1000 * 60 * 60 * 24)) > 30) {
+                setIsLocked(true);
+              }
+            }
+            setRows(existingData);
+          } else if (!historyWeek) {
+            addNewRow();
           }
         }
+
+        const dealerSnap = await getDocs(query(collection(db, "dealers"), orderBy("name", "asc")));
+        setDealers(dealerSnap.docs.map(d => d.data().name));
+
       } catch (e) {
-        showError(e, "Failed to load materials");
+        showError(e, "Failed to load material sheet");
       } finally {
         setLoading(false);
       }
     };
     loadMaterialData();
-  }, [siteId]);
+  }, [siteId, historyWeek]);
+
+  const addNewRow = () => {
+    if (isReadOnly || isLocked) return;
+    const today = new Date();
+    setRows([...rows, { 
+      id: `temp_${Date.now()}_${Math.random()}`, 
+      dayName: MARATHI_DAYS[today.getDay()], 
+      date: today.toISOString().split('T')[0], 
+      details: "", 
+      dealerName: "", 
+      qty: 0, 
+      rate: 0,
+      paidAmount: 0 
+    }]);
+  };
+
+  const removeRow = (index) => {
+    if (isReadOnly || isLocked) return;
+    setRows(rows.filter((_, i) => i !== index));
+  };
 
   const handleInputChange = (index, field, value) => {
+    if (isLocked || isReadOnly) return;
     const updatedRows = [...rows];
-    if (field === 'qty' || field === 'rate') {
+    
+    if (field === 'date') {
+      // 🔥 UPDATED WEEK GUARD LOGIC
+      const selectedDate = new Date(value);
+      const selectedWeekKey = getWeekKeyFromDate(selectedDate);
+
+      // Compare selected date's week with Site's Current Week
+      if (selectedWeekKey !== site.currentWeekKey) {
+         alert(`Wrong Week! This date belongs to ${selectedWeekKey}, but the site is currently on ${site.currentWeekKey}. Please "Create New Week" in the Registry first.`);
+         return;
+      }
+
+      updatedRows[index].dayName = MARATHI_DAYS[selectedDate.getDay()];
+      updatedRows[index].date = value;
+    } else if (['qty', 'rate', 'paidAmount'].includes(field)) {
       updatedRows[index][field] = value === "" ? 0 : parseFloat(value);
     } else {
       updatedRows[index][field] = value;
@@ -71,23 +126,36 @@ function MaterialSheet() {
     setRows(updatedRows);
   };
 
-  const grandTotal = useMemo(() => {
-    return rows.reduce((acc, row) => acc + (row.qty * row.rate), 0);
+  const totals = useMemo(() => {
+    return rows.reduce((acc, row) => {
+      const bill = row.qty * row.rate;
+      acc.grandTotal += bill;
+      acc.totalPaid += (row.paidAmount || 0);
+      return acc;
+    }, { grandTotal: 0, totalPaid: 0 });
   }, [rows]);
 
   const saveSheet = async () => {
+    if (isLocked || isReadOnly) return;
     try {
       setSaving(true);
       const batch = writeBatch(db);
       const weekKey = site.currentWeekKey;
 
       rows.forEach((row) => {
-        // Unique ID per day to prevent duplicate rows for the same week
-        const docId = `${siteId}_${weekKey}_material_${row.dayName}`;
+        const docId = row.id.toString().startsWith('temp_') 
+          ? `${siteId}_${weekKey}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` 
+          : row.id;
         const docRef = doc(db, "material_entries", docId);
         
         batch.set(docRef, {
-          ...row,
+          dayName: row.dayName,
+          date: row.date,
+          details: row.details,
+          dealerName: row.dealerName,
+          qty: row.qty,
+          rate: row.rate,
+          paidAmount: row.paidAmount || 0,
           siteId,
           weekKey,
           updatedAt: serverTimestamp()
@@ -96,7 +164,7 @@ function MaterialSheet() {
 
       await batch.commit();
       showSuccess("Material Sheet Saved ✅");
-      navigate(`/accountant/site/${siteId}`);
+      navigate(`/accountant/site/${siteId}/material`);
     } catch (e) {
       showError(e, "Save failed");
     } finally {
@@ -104,111 +172,118 @@ function MaterialSheet() {
     }
   };
 
-  if (loading) return <Layout><div style={{padding:'20px'}}>Loading Material Sheet...</div></Layout>;
-
   return (
     <Layout>
-      <div className="admin-dashboard">
+      <div className="admin-dashboard material-page-container">
         <div className="sticky-back-header-v5">
-          <button className="btn-back-pro" onClick={() => navigate(`/accountant/site/${siteId}`)}>
+          <button className="btn-back-pro" onClick={() => navigate(`/accountant/site/${siteId}/material`)}>
             <span className="back-icon">←</span>
             <div className="back-text">
-                <span className="back-label">Back to Site</span>
-                <span className="back-sub">Site MIS</span>
+                <span className="back-label">Back to Material Registry</span>
+                <span className="back-sub">{isReadOnly ? "View History Mode" : "Live Entry Mode"}</span>
             </div>
           </button>
           <div className="engineer-badge-pill">
             <div className="badge-content-v5">
-              <span className="eng-label-v5">मटेरियल शीट (Material)</span>
+              <span className="eng-label-v5">मटेरियल एन्ट्री (With Dealer & Payment)</span>
               <h2 className="eng-name-v5">{site?.name}</h2>
             </div>
           </div>
+          {isReadOnly && (
+            <button className="btn-logout-v5" onClick={() => window.print()} style={{marginLeft: 'auto', background: '#f8fafc', color: '#1e293b'}}>🖨️ Print</button>
+          )}
         </div>
 
-        <div className="master-table-container">
+        <datalist id="dealer-list">
+          {dealers.map((name, i) => <option key={i} value={name} />)}
+        </datalist>
+
+        <div className="master-table-container desktop-view" style={{marginTop: '20px'}}>
           <table className="master-table">
             <thead>
               <tr>
-                <th style={{ width: '160px' }}>तारीख (Date)</th>
-                <th style={{ width: '110px' }}>वार (Day)</th>
+                <th style={{ width: '150px' }}>तारीख (Date)</th>
                 <th>तपशील (Details)</th>
-                <th style={{ width: '100px' }}>ब्रास/नग</th>
-                <th style={{ width: '120px' }}>दर (Rate)</th>
-                <th style={{ width: '140px', textAlign: 'right' }}>एकूण (Total)</th>
+                <th style={{ width: '180px' }}>डिलीर (Dealer)</th>
+                <th style={{ width: '90px' }}>ब्रास/नग</th>
+                <th style={{ width: '100px' }}>दर (Rate)</th>
+                <th style={{ width: '120px' }}>एकूण (Bill)</th>
+                <th style={{ width: '120px', color: '#059669' }}>पेड (Paid)</th>
+                {!isReadOnly && <th style={{ width: '40px' }}></th>}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, index) => {
-                const rowTotal = row.qty * row.rate;
-                return (
-                  <tr key={index}>
+              {rows.map((row, index) => (
+                <tr key={row.id}>
+                  <td>
+                    {isReadOnly ? <span>{row.date} <br/><small>{row.dayName}</small></span> : 
+                    <input type="date" disabled={isLocked} className="sheet-input-text" value={row.date} onChange={(e) => handleInputChange(index, 'date', e.target.value)} />}
+                  </td>
+                  <td>
+                    {isReadOnly ? <span>{row.details}</span> :
+                    <input type="text" disabled={isLocked} className="sheet-input-text" value={row.details} onChange={(e) => handleInputChange(index, 'details', e.target.value)} placeholder="Cement..." />}
+                  </td>
+                  <td>
+                    {isReadOnly ? <span style={{fontWeight: '700'}}>{row.dealerName || "Local"}</span> :
+                    <input type="text" list="dealer-list" disabled={isLocked} className="sheet-input-text" value={row.dealerName} onChange={(e) => handleInputChange(index, 'dealerName', e.target.value)} placeholder="Search or Type..." />}
+                  </td>
+                  <td>
+                    {isReadOnly ? <span>{row.qty}</span> :
+                    <input type="number" disabled={isLocked} className="sheet-input-num" value={row.qty} onChange={(e) => handleInputChange(index, 'qty', e.target.value)} />}
+                  </td>
+                  <td>
+                    {isReadOnly ? <span>{row.rate}</span> :
+                    <input type="number" disabled={isLocked} className="sheet-input-num" value={row.rate} onChange={(e) => handleInputChange(index, 'rate', e.target.value)} />}
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: 'bold' }}>₹ {(row.qty * row.rate).toLocaleString('en-IN')}</td>
+                  <td>
+                    {isReadOnly ? <span style={{color: '#059669', fontWeight: '800'}}>₹ {row.paidAmount || 0}</span> :
+                    <input type="number" disabled={isLocked} className="sheet-input-num payment-input" value={row.paidAmount} onChange={(e) => handleInputChange(index, 'paidAmount', e.target.value)} placeholder="Amount Paid" />}
+                  </td>
+                  {!isReadOnly && (
                     <td>
-                      {/* 🔥 DATE PICKER ADDED HERE */}
-                      <input 
-                        type="date" 
-                        className="sheet-input-text" 
-                        value={row.date} 
-                        onChange={(e) => handleInputChange(index, 'date', e.target.value)} 
-                      />
+                      {!isLocked && <button onClick={() => removeRow(index)} style={{background:'none', border:'none', cursor:'pointer'}}>❌</button>}
                     </td>
-                    <td><strong>{row.dayName}</strong></td>
-                    <td>
-                      <input 
-                        type="text" 
-                        className="sheet-input-text" 
-                        value={row.details} 
-                        onChange={(e) => handleInputChange(index, 'details', e.target.value)} 
-                        placeholder="Material details..."
-                      />
-                    </td>
-                    <td><input type="number" className="sheet-input-num" value={row.qty} onChange={(e) => handleInputChange(index, 'qty', e.target.value)} /></td>
-                    <td><input type="number" className="sheet-input-num" value={row.rate} onChange={(e) => handleInputChange(index, 'rate', e.target.value)} /></td>
-                    <td style={{ textAlign: 'right', fontWeight: 'bold' }}>₹ {rowTotal.toLocaleString('en-IN')}</td>
-                  </tr>
-                );
-              })}
+                  )}
+                </tr>
+              ))}
             </tbody>
-            <tfoot>
-              <tr style={{ background: '#f8fafc' }}>
-                <td colSpan="5" style={{ textAlign: 'right', fontWeight: '800', fontSize: '1rem' }}>एकूण (TOTAL):</td>
-                <td style={{ textAlign: 'right', fontWeight: '900', fontSize: '1.2rem', color: 'var(--admin-accent)' }}>
-                  ₹ {grandTotal.toLocaleString('en-IN')}
-                </td>
-              </tr>
-            </tfoot>
           </table>
+          
+          {!isLocked && !isReadOnly && (
+            <button className="btn-add-row" onClick={addNewRow}>+ Add New Material Row</button>
+          )}
         </div>
 
-        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-          <Button loading={saving} onClick={saveSheet}>💾 Save Material Sheet</Button>
+        <div className="sheet-actions-footer">
+          <div className="footer-summary-grid">
+            <div className="summary-item">
+               <span className="label">Grand Total:</span>
+               <span className="val">₹ {totals.grandTotal.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="summary-item">
+               <span className="label" style={{color: '#059669'}}>Total Paid:</span>
+               <span className="val" style={{color: '#059669'}}>₹ {totals.totalPaid.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="summary-item">
+               <span className="label" style={{color: '#dc2626'}}>Pending:</span>
+               <span className="val" style={{color: '#dc2626'}}>₹ {(totals.grandTotal - totals.totalPaid).toLocaleString('en-IN')}</span>
+            </div>
+          </div>
+          {!isLocked && !isReadOnly && <Button loading={saving} onClick={saveSheet}>💾 Save Material & Payments</Button>}
         </div>
       </div>
 
       <style>{`
-        .sheet-input-num {
-          width: 100%;
-          border: 1px solid #e2e8f0;
-          padding: 8px;
-          border-radius: 4px;
-          text-align: center;
-          font-family: inherit;
-        }
-        .sheet-input-text {
-          width: 100%;
-          border: 1px solid #e2e8f0;
-          padding: 8px;
-          border-radius: 4px;
-          font-family: inherit;
-        }
-        /* Custom styling for date picker to look cleaner */
-        input[type="date"]::-webkit-calendar-picker-indicator {
-          cursor: pointer;
-          filter: invert(0.5);
-        }
-        .sheet-input-num:focus, .sheet-input-text:focus {
-          outline: 2px solid var(--admin-accent);
-          border-color: transparent;
-        }
+        .btn-add-row { width: 100%; padding: 15px; margin-top: 10px; background: #f8fafc; border: 2px dashed #cbd5e1; color: #64748b; font-weight: 700; border-radius: 8px; cursor: pointer; }
+        .sheet-input-num, .sheet-input-text { width: 100%; border: 1px solid #e2e8f0; padding: 8px; border-radius: 4px; text-align: center; }
+        .payment-input { border-color: #10b981 !important; background: #f0fdf4; color: #065f46; font-weight: 700; }
+        .sheet-actions-footer { margin-top: 2rem; padding: 25px; background: #f1f5f9; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .footer-summary-grid { display: flex; gap: 30px; }
+        .summary-item { display: flex; flex-direction: column; }
+        .summary-item .label { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; }
+        .summary-item .val { font-size: 1.4rem; font-weight: 900; }
+        @media print { .sticky-back-header-v5, .btn-add-row, .sheet-actions-footer button { display: none !important; } }
       `}</style>
     </Layout>
   );

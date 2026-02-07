@@ -18,7 +18,11 @@ import AccountantDashboard from "./pages/AccountantDashboard";
 import AccountantSiteDetail from "./pages/AccountantSiteDetail";
 import LabourIndex from "./pages/LabourIndex";
 import LabourSheet from "./pages/LabourSheet";
+import MaterialIndex from "./pages/MaterialIndex";
 import MaterialSheet from "./pages/MaterialSheet";
+// Add this import at the top
+import DealerRegistry from "./pages/DealerRegistry";
+import DealerLedger from "./pages/DealerLedger";
 
 export default function App() {
   return (
@@ -67,13 +71,36 @@ export default function App() {
         }
       />
 
-      <Route 
-        path="/accountant/site/:siteId/material" 
+      // Add this route inside your ProtectedRoute block
+      <Route
+        path="/accountant/dealers"
+        element={
+          <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
+            <DealerRegistry />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* --- MATERIAL MANAGEMENT ROUTES --- */}
+
+      {/* 1. The Registry/History Page (The "Two-Column" Index we just built) */}
+      <Route
+        path="/accountant/site/:siteId/material"
+        element={
+          <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
+            <MaterialIndex />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* 2. The Actual Data Entry Page (The dynamic "+ Add Row" sheet) */}
+      <Route
+        path="/accountant/site/:siteId/material-sheet"
         element={
           <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
             <MaterialSheet />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Admin Master Management */}
@@ -105,7 +132,7 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-
+      <Route path="/accountant/dealers/:dealerId" element={<ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}><DealerLedger /></ProtectedRoute>} />
       {/* Advanced Reports */}
       <Route
         path="/admin/reports/advanced"

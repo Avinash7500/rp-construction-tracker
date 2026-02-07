@@ -75,3 +75,44 @@ button:focus-visible {
   50% { opacity: 0.4; }
   100% { opacity: 1; }
 }
+
+/* src/index.css - Mobile Responsiveness Additions */
+
+/* 1. Prevent body from being wider than the screen */
+body {
+  margin: 0;
+  display: block; /* Changed from flex to prevent layout squashing */
+  min-width: 320px;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* 2. Responsive Table Container */
+.master-table-container {
+  width: 100%;
+  overflow-x: auto; /* Standard fix: adds a scrollbar to tables on mobile */
+  -webkit-overflow-scrolling: touch;
+  background: white;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+/* 3. Global Media Queries */
+@media (max-width: 768px) {
+  .master-grid, .detail-grid {
+    grid-template-columns: 1fr !important; /* Forces 2-column grids into 1 column */
+    gap: 1rem;
+  }
+
+  .admin-dashboard {
+    padding: 10px !important; /* Saves space on small screens */
+  }
+
+  /* Make headers stack vertically */
+  .sticky-back-header-v5 {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 15px;
+    padding: 1rem !important;
+  }
+}
