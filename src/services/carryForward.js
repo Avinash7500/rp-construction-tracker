@@ -27,6 +27,8 @@ export async function carryForwardToNextWeek(siteId) {
   const nextWeekKey = getNextWeekKey(currentWeekKey);
 
   const assignedEngineerId = site.assignedEngineerId || null;
+  const assignedEngineerName = site.assignedEngineerName || "";
+  const siteName = site.name || "";
 
   // ✅ Only carry PENDING tasks from current week
   const tasksRef = collection(db, "tasks");
@@ -49,11 +51,18 @@ export async function carryForwardToNextWeek(siteId) {
 
     batch.set(newTaskRef, {
       siteId,
+      siteName,
       assignedEngineerId,
+      assignedEngineerName,
       title: task.title,
       status: "PENDING",
       priority: task.priority || "NORMAL",
       pendingWeeks: (task.pendingWeeks || 0) + 1,
+      dayName: task.dayName || null,
+      expectedCompletionDate: task.expectedCompletionDate || null,
+      createdBy: task.createdBy || "ENGINEER",
+      createdByUid: task.createdByUid || assignedEngineerId || null,
+      createdByName: task.createdByName || assignedEngineerName || "",
 
       weekKey: nextWeekKey,
 

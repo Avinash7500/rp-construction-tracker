@@ -1,0 +1,108 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------- HELPERS ---------- */
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function hasRole(roleName) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(uid()))
+        && get(/databases/$(database)/documents/users/$(uid())).data.role == roleName
+        && get(/databases/$(database)/documents/users/$(uid())).data.isActive == true;
+    }
+
+    function isAdmin() {
+      return hasRole("ADMIN");
+    }
+
+    function isEngineer() {
+      return hasRole("ENGINEER");
+    }
+
+    function isAccountant() {
+      return hasRole("ACCOUNTANT");
+    }
+
+    /* ---------- USERS ---------- */
+    match /users/{userId} {
+      allow read, write: if isAdmin();
+      allow read: if (isEngineer() || isAccountant()) && userId == uid();
+      allow update: if isEngineer()
+        && userId == uid()
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.isActive == resource.data.isActive;
+      allow create: if signedIn() && userId == uid();
+      allow delete: if false;
+    }
+
+    /* ---------- SITES ---------- */
+    match /sites/{siteId} {
+      allow read, write: if isAdmin();
+      allow read: if isEngineer() && resource.data.assignedEngineerId == uid();
+      allow read, update: if isAccountant();
+      allow create, delete: if false;
+    }
+
+    /* ---------- TASKS ---------- */
+    match /tasks/{taskId} {
+      allow read, write: if isAdmin();
+
+      // Engineer Reports query support:
+      // where("assignedEngineerId", "==", uid()) + orderBy("createdAt")
+      allow read: if isAccountant()
+        || (isEngineer() && resource.data.assignedEngineerId == uid());
+
+      // Engineer can create own pending tasks (including carry-forward generated entries).
+      allow create: if isEngineer()
+        && request.resource.data.assignedEngineerId == uid()
+        && request.resource.data.status == "PENDING"
+        && request.resource.data.weekKey is string
+        && request.resource.data.siteId is string
+        && (
+          !("createdBy" in request.resource.data)
+          || request.resource.data.createdBy == "ENGINEER"
+          || request.resource.data.createdBy == "ADMIN"
+        );
+
+      // Engineer can update only own tasks; lock ownership and task identity fields.
+      allow update: if isEngineer()
+        && resource.data.assignedEngineerId == uid()
+        && request.resource.data.assignedEngineerId == resource.data.assignedEngineerId
+        && request.resource.data.siteId == resource.data.siteId
+        && request.resource.data.weekKey == resource.data.weekKey;
+
+      allow delete: if false;
+    }
+
+    /* ---------- ACCOUNTING: LABOUR ENTRIES ---------- */
+    match /labour_entries/{entryId} {
+      allow read, write: if isAdmin();
+      allow read, create, update: if isAccountant();
+      allow delete: if false;
+    }
+
+    /* ---------- ACCOUNTING: MATERIAL ENTRIES ---------- */
+    match /material_entries/{entryId} {
+      allow read, write: if isAdmin();
+      allow read, write: if isAccountant();
+    }
+
+    /* ---------- REPORT SNAPSHOTS ---------- */
+    match /reportSnapshots/{weekKey} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    /* ---------- DEALER MASTER REGISTRY ---------- */
+    match /dealers/{dealerId} {
+      allow read, write: if isAdmin() || isAccountant();
+    }
+  }
+}

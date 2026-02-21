@@ -1,10 +1,87 @@
+/* src/App.css */
+
+/* 1. Global Reset & Width Fix */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left; /* Changed from center to left for better dashboard alignment */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
+/* 2. Responsive Container - Use this for all your pages */
+.dashboard-container,
+.admin-dashboard,
+.page-container {
+  width: 100%;
+  max-width: 1400px; /* Increased for professional widescreen feel */
+  margin: 0 auto;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  transition: padding 0.3s ease;
+}
+
+/* 3. Table Wrapper (Fixes horizontal scroll on mobile) */
+.master-table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+}
+
+/* 4. Global Responsive Grid Utility */
+/* This will automatically stack your 2-column or 3-column layouts on mobile */
+@media (max-width: 1024px) {
+  .master-grid,
+  .detail-grid,
+  .master-grid-v2 {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+}
+
+/* 5. Mobile-Specific Tweaks (Phone width) */
+@media (max-width: 600px) {
+  #root {
+    padding: 0;
+  }
+
+  .dashboard-container,
+  .admin-dashboard,
+  .page-container {
+    padding: 10px; /* Tighten padding for small screens */
+  }
+
+  /* Make sticky headers behave on mobile */
+  .sticky-back-header-v5 {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    padding: 10px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  /* Font size reduction for mobile readability */
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  h2 {
+    font-size: 1.25rem !important;
+  }
+
+  /* Buttons should be full width on mobile for easier tapping */
+  .btn-primary-v5,
+  .btn-save-raw,
+  .btn-submit-dealer {
+    width: 100% !important;
+  }
+}
+
+/* --- Keep your existing logo/react styles below --- */
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -31,12 +108,4 @@
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
   }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
 }

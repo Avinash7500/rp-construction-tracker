@@ -9,7 +9,15 @@ import EmptyState from "../components/EmptyState";
 import { showError } from "../utils/showError";
 import { showSuccess } from "../utils/showSuccess";
 
-import { collection, getDocs, orderBy, query, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  orderBy,
+  query,
+  doc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 
 // ✅ ExcelJS for colorful excel
@@ -42,7 +50,7 @@ function nowFileStamp() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(
-    d.getHours()
+    d.getHours(),
   )}${pad(d.getMinutes())}`;
 }
 
@@ -59,8 +67,10 @@ function getRangeStart(rangeKey) {
   const now = new Date();
 
   if (rangeKey === "ALL_TIME") return null;
-  if (rangeKey === "LAST_7_DAYS") return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  if (rangeKey === "LAST_30_DAYS") return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  if (rangeKey === "LAST_7_DAYS")
+    return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  if (rangeKey === "LAST_30_DAYS")
+    return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   if (rangeKey === "THIS_MONTH") return startOfMonth(now);
 
   return null;
@@ -102,7 +112,8 @@ const styles = {
   hero: {
     borderRadius: 16,
     padding: 16,
-    background: "linear-gradient(135deg, #0f172a 0%, #111827 60%, #0b1220 100%)",
+    background:
+      "linear-gradient(135deg, #0f172a 0%, #111827 60%, #0b1220 100%)",
     color: "#fff",
     boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
     marginBottom: 12,
@@ -225,7 +236,14 @@ function MiniBadge({ text }) {
 
 function StatRow({ label, value }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12 }}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 10,
+        fontSize: 12,
+      }}
+    >
       <span style={{ color: "#475569" }}>{label}</span>
       <b style={{ color: "#0f172a" }}>{value}</b>
     </div>
@@ -249,10 +267,18 @@ function Pager({ page, totalPages, total, onPrev, onNext }) {
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
-        <button style={styles.pill(false)} onClick={onPrev} disabled={page <= 1}>
+        <button
+          style={styles.pill(false)}
+          onClick={onPrev}
+          disabled={page <= 1}
+        >
           ← Prev
         </button>
-        <button style={styles.pill(false)} onClick={onNext} disabled={page >= totalPages}>
+        <button
+          style={styles.pill(false)}
+          onClick={onNext}
+          disabled={page >= totalPages}
+        >
           Next →
         </button>
       </div>
@@ -304,7 +330,11 @@ function addRowBorders(worksheet) {
         bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
         right: { style: "thin", color: { argb: "FFE2E8F0" } },
       };
-      cell.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: "left",
+        wrapText: true,
+      };
     });
   });
 }
@@ -351,7 +381,15 @@ export default function Reports() {
     setPageSites(1);
     setPageTasks(1);
     setPageEngineers(1);
-  }, [tab, dateRange, search, engineerFocusId, selectedSiteId, weekFilter, selectedWeekKey]);
+  }, [
+    tab,
+    dateRange,
+    search,
+    engineerFocusId,
+    selectedSiteId,
+    weekFilter,
+    selectedWeekKey,
+  ]);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -406,10 +444,14 @@ export default function Reports() {
 
       const ref = doc(db, "reportSnapshots", snapshot.weekKey);
 
-      await setDoc(ref, {
-        ...snapshot,
-        createdAt: serverTimestamp(),
-      }, { merge: true });
+      await setDoc(
+        ref,
+        {
+          ...snapshot,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
 
       showSuccess(`Snapshot saved ✅ (${snapshot.weekKey})`);
     } catch (e) {
@@ -448,15 +490,23 @@ export default function Reports() {
       const total = siteTasks.length;
       const pending = siteTasks.filter((t) => t.status === "PENDING").length;
       const done = siteTasks.filter((t) => t.status === "DONE").length;
-      const cancelled = siteTasks.filter((t) => t.status === "CANCELLED").length;
+      const cancelled = siteTasks.filter(
+        (t) => t.status === "CANCELLED",
+      ).length;
 
       const currentWeekKey = site.currentWeekKey || "";
 
       const overdue = siteTasks.filter(
-        (t) => t.status === "PENDING" && t.weekKey && currentWeekKey && t.weekKey < currentWeekKey
+        (t) =>
+          t.status === "PENDING" &&
+          t.weekKey &&
+          currentWeekKey &&
+          t.weekKey < currentWeekKey,
       ).length;
 
-      const carried = siteTasks.filter((t) => (t.pendingWeeks || 0) >= 1).length;
+      const carried = siteTasks.filter(
+        (t) => (t.pendingWeeks || 0) >= 1,
+      ).length;
 
       return {
         siteId: site.id,
@@ -576,7 +626,12 @@ export default function Reports() {
       if ((t.pendingWeeks || 0) >= 1) row.carried += 1;
 
       const currentWeekKey = site.currentWeekKey || "";
-      if (status === "PENDING" && t.weekKey && currentWeekKey && t.weekKey < currentWeekKey) {
+      if (
+        status === "PENDING" &&
+        t.weekKey &&
+        currentWeekKey &&
+        t.weekKey < currentWeekKey
+      ) {
         row.overdue += 1;
       }
     });
@@ -587,8 +642,10 @@ export default function Reports() {
     });
 
     list.sort((a, b) => {
-      if (engineerSort === "BEST_COMPLETION") return b.completionRate - a.completionRate;
-      if (engineerSort === "MOST_OVERDUE") return (b.overdue || 0) - (a.overdue || 0);
+      if (engineerSort === "BEST_COMPLETION")
+        return b.completionRate - a.completionRate;
+      if (engineerSort === "MOST_OVERDUE")
+        return (b.overdue || 0) - (a.overdue || 0);
       return (b.pending || 0) - (a.pending || 0);
     });
 
@@ -597,21 +654,32 @@ export default function Reports() {
 
   const engineerPerformance = useMemo(() => {
     return engineerPerformanceBase.filter((e) => {
-      return textIncludes(e.engineerName, search) || textIncludes(e.engineerId, search);
+      return (
+        textIncludes(e.engineerName, search) ||
+        textIncludes(e.engineerId, search)
+      );
     });
   }, [engineerPerformanceBase, search]);
 
   const allSitesSummaryFiltered = useMemo(() => {
     return allSitesSummary.filter((s) => {
-      return textIncludes(s.name, search) || textIncludes(s.engineer, search) || textIncludes(s.currentWeekKey, search);
+      return (
+        textIncludes(s.name, search) ||
+        textIncludes(s.engineer, search) ||
+        textIncludes(s.currentWeekKey, search)
+      );
     });
   }, [allSitesSummary, search]);
 
   // Week list from filtered tasks
   useEffect(() => {
     if (!selectedSiteId) return;
-    const siteTasks = filteredTasksByDate.filter((t) => t.siteId === selectedSiteId);
-    const weeks = Array.from(new Set(siteTasks.map((t) => t.weekKey).filter(Boolean))).sort();
+    const siteTasks = filteredTasksByDate.filter(
+      (t) => t.siteId === selectedSiteId,
+    );
+    const weeks = Array.from(
+      new Set(siteTasks.map((t) => t.weekKey).filter(Boolean)),
+    ).sort();
     setAvailableWeeks(weeks);
   }, [selectedSiteId, filteredTasksByDate]);
 
@@ -633,23 +701,33 @@ export default function Reports() {
     }
 
     list = list.filter((t) => {
-      return textIncludes(t.title, search) || textIncludes(t.status, search) || textIncludes(t.weekKey, search);
+      return (
+        textIncludes(t.title, search) ||
+        textIncludes(t.status, search) ||
+        textIncludes(t.weekKey, search)
+      );
     });
 
     return list;
   }, [visibleTasks, weekFilter, selectedWeekKey, search]);
 
   /* ----------------- Pagination models ----------------- */
-  const overduePageModel = useMemo(() => paginate(overdueRanking, pageOverdue, 10), [overdueRanking, pageOverdue]);
-  const sitesPageModel = useMemo(() => paginate(allSitesSummaryFiltered, pageSites, 8), [
-    allSitesSummaryFiltered,
-    pageSites,
-  ]);
-  const tasksPageModel = useMemo(() => paginate(visibleTasksFinal, pageTasks, 15), [visibleTasksFinal, pageTasks]);
-  const engineersPageModel = useMemo(() => paginate(engineerPerformance, pageEngineers, 8), [
-    engineerPerformance,
-    pageEngineers,
-  ]);
+  const overduePageModel = useMemo(
+    () => paginate(overdueRanking, pageOverdue, 10),
+    [overdueRanking, pageOverdue],
+  );
+  const sitesPageModel = useMemo(
+    () => paginate(allSitesSummaryFiltered, pageSites, 8),
+    [allSitesSummaryFiltered, pageSites],
+  );
+  const tasksPageModel = useMemo(
+    () => paginate(visibleTasksFinal, pageTasks, 15),
+    [visibleTasksFinal, pageTasks],
+  );
+  const engineersPageModel = useMemo(
+    () => paginate(engineerPerformance, pageEngineers, 8),
+    [engineerPerformance, pageEngineers],
+  );
 
   /* ----------------- Export Excel (Phase 5.7) ----------------- */
   const exportExcel = async () => {
@@ -691,7 +769,11 @@ export default function Reports() {
       wsOverdue.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return;
         row.eachCell((cell) => {
-          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF1F2" } };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFFFF1F2" },
+          };
         });
       });
       setAutoWidth(wsOverdue);
@@ -730,7 +812,11 @@ export default function Reports() {
         const overdueValue = Number(row.getCell(8).value || 0);
         if (overdueValue > 0) {
           row.eachCell((cell) => {
-            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF7ED" } };
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFFFF7ED" },
+            };
           });
         }
       });
@@ -772,7 +858,11 @@ export default function Reports() {
         const completion = Number(row.getCell(9).value || 0);
 
         if (overdue > 0) {
-          row.getCell(7).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFE4E6" } };
+          row.getCell(7).fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFFFE4E6" },
+          };
         }
 
         row.getCell(9).numFmt = "0%";
@@ -827,16 +917,28 @@ export default function Reports() {
 
       autoTable(doc, {
         startY: 41,
-        head: [["Rank", "Task", "Site", "Engineer", "TaskWeek", "CurrWeek", "PendingWeeks"]],
-        body: overdueRanking.slice(0, 50).map((t, idx) => [
-          idx + 1,
-          t.title,
-          t.siteName,
-          t.engineerName,
-          t.weekKey,
-          t.currentWeekKey,
-          String(t.pendingWeeks || 0),
-        ]),
+        head: [
+          [
+            "Rank",
+            "Task",
+            "Site",
+            "Engineer",
+            "TaskWeek",
+            "CurrWeek",
+            "PendingWeeks",
+          ],
+        ],
+        body: overdueRanking
+          .slice(0, 50)
+          .map((t, idx) => [
+            idx + 1,
+            t.title,
+            t.siteName,
+            t.engineerName,
+            t.weekKey,
+            t.currentWeekKey,
+            String(t.pendingWeeks || 0),
+          ]),
         styles: { fontSize: 8 },
         headStyles: { fillColor: [15, 23, 42] },
       });
@@ -847,7 +949,19 @@ export default function Reports() {
 
       autoTable(doc, {
         startY: y + 3,
-        head: [["Site", "Engineer", "CurrWeek", "Total", "Pending", "Done", "Cancel", "Overdue", "Carried"]],
+        head: [
+          [
+            "Site",
+            "Engineer",
+            "CurrWeek",
+            "Total",
+            "Pending",
+            "Done",
+            "Cancel",
+            "Overdue",
+            "Carried",
+          ],
+        ],
         body: allSitesSummaryFiltered.map((s) => [
           s.name,
           s.engineer,
@@ -869,7 +983,19 @@ export default function Reports() {
 
       autoTable(doc, {
         startY: y + 3,
-        head: [["Engineer", "Sites", "Total", "Pending", "Done", "Cancel", "Overdue", "Carried", "Done%"]],
+        head: [
+          [
+            "Engineer",
+            "Sites",
+            "Total",
+            "Pending",
+            "Done",
+            "Cancel",
+            "Overdue",
+            "Carried",
+            "Done%",
+          ],
+        ],
         body: engineerPerformance.map((e) => [
           e.engineerName,
           String(e.sitesCount),
@@ -903,39 +1029,73 @@ export default function Reports() {
           <div style={styles.hero}>
             <h1 style={styles.heroTitle}>📊 Reports Dashboard</h1>
             <p style={styles.heroSub}>
-              Track site progress, engineer performance, overdue tasks & export reports (Excel/PDF).
+              Track site progress, engineer performance, overdue tasks & export
+              reports (Excel/PDF).
             </p>
           </div>
 
           {/* Sticky Bar */}
           <div style={styles.stickyBar}>
             <div style={styles.pillsWrap}>
-              <button style={styles.pill(false)} onClick={() => navigate("/admin")}>
+              <button
+                style={styles.pill(false)}
+                onClick={() => navigate("/admin")}
+              >
                 ← Admin
               </button>
-              <button style={styles.pill(false)} onClick={() => navigate("/admin/reports/advanced")}>
+              <button
+                style={styles.pill(false)}
+                onClick={() => navigate("/admin/reports/advanced")}
+              >
                 ⚙ Advanced Reports
               </button>
-              <button style={styles.pill(false)} onClick={() => navigate("/admin/reports/snapshots")}>
+              <button
+                style={styles.pill(false)}
+                onClick={() => navigate("/admin/reports/snapshots")}
+              >
                 📌 Snapshots
               </button>
-              <button style={styles.pill(tab === "ALL")} onClick={() => setTab("ALL")}>
+              <button
+                style={styles.pill(tab === "ALL")}
+                onClick={() => setTab("ALL")}
+              >
                 📌 All Sites
               </button>
 
-              <button style={styles.pill(tab === "SITE")} onClick={() => setTab("SITE")}>
+              <button
+                style={styles.pill(tab === "SITE")}
+                onClick={() => setTab("SITE")}
+              >
                 🧾 Site Wise
               </button>
 
-              <button style={styles.pill(tab === "ENGINEERS")} onClick={() => setTab("ENGINEERS")}>
+              <button
+                style={styles.pill(tab === "ENGINEERS")}
+                onClick={() => setTab("ENGINEERS")}
+              >
                 👷 Engineers
               </button>
             </div>
 
             <div style={styles.controlsWrap}>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>Date Filter:</span>
-                <select style={styles.select} value={dateRange} onChange={(e) => setDateRange(e.target.value)}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
+                <span
+                  style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}
+                >
+                  Date Filter:
+                </span>
+                <select
+                  style={styles.select}
+                  value={dateRange}
+                  onChange={(e) => setDateRange(e.target.value)}
+                >
                   <option value="ALL_TIME">All Time</option>
                   <option value="LAST_7_DAYS">Last 7 Days</option>
                   <option value="LAST_30_DAYS">Last 30 Days</option>
@@ -1026,7 +1186,8 @@ export default function Reports() {
                     }}
                   >
                     <div>
-                      🔎 Overdue ranking filtered for engineer: <b>{engineerFocusName || engineerFocusId}</b>
+                      🔎 Overdue ranking filtered for engineer:{" "}
+                      <b>{engineerFocusName || engineerFocusId}</b>
                     </div>
 
                     <button
@@ -1045,7 +1206,9 @@ export default function Reports() {
 
               <div style={styles.section}>
                 <h3 style={styles.sectionTitle}>🔥 Top Overdue Tasks</h3>
-                <p style={styles.sectionSub}>Search + paginated list (fast even with large data).</p>
+                <p style={styles.sectionSub}>
+                  Search + paginated list (fast even with large data).
+                </p>
 
                 {overduePageModel.total === 0 ? (
                   <div style={{ fontSize: 13, color: "#475569" }}>
@@ -1055,25 +1218,59 @@ export default function Reports() {
                   <div style={{ marginTop: 10 }}>
                     {overduePageModel.items.map((t, idx) => (
                       <div key={t.id} style={styles.softCard}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 10,
+                          }}
+                        >
                           <div>
                             <div style={{ fontWeight: 900, color: "#0f172a" }}>
-                              #{(overduePageModel.page - 1) * overduePageModel.pageSize + idx + 1}. {t.title}
+                              #
+                              {(overduePageModel.page - 1) *
+                                overduePageModel.pageSize +
+                                idx +
+                                1}
+                              . {t.title}
                             </div>
 
-                            <div style={{ fontSize: 12, marginTop: 4, color: "#475569" }}>
-                              Site: <b style={{ color: "#0f172a" }}>{t.siteName}</b> • Engineer:{" "}
-                              <b style={{ color: "#0f172a" }}>{t.engineerName}</b>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                marginTop: 4,
+                                color: "#475569",
+                              }}
+                            >
+                              Site:{" "}
+                              <b style={{ color: "#0f172a" }}>{t.siteName}</b> •
+                              Engineer:{" "}
+                              <b style={{ color: "#0f172a" }}>
+                                {t.engineerName}
+                              </b>
                             </div>
 
-                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 6,
+                                flexWrap: "wrap",
+                                marginTop: 8,
+                              }}
+                            >
                               <MiniBadge text={`Task Week: ${t.weekKey}`} />
-                              <MiniBadge text={`Current: ${t.currentWeekKey}`} />
-                              <MiniBadge text={`↪ PendingWeeks: ${t.pendingWeeks}`} />
+                              <MiniBadge
+                                text={`Current: ${t.currentWeekKey}`}
+                              />
+                              <MiniBadge
+                                text={`↪ PendingWeeks: ${t.pendingWeeks}`}
+                              />
                             </div>
                           </div>
 
-                          <div style={{ display: "flex", alignItems: "center" }}>
+                          <div
+                            style={{ display: "flex", alignItems: "center" }}
+                          >
                             <button
                               style={styles.pill(false)}
                               onClick={() => {
@@ -1095,7 +1292,11 @@ export default function Reports() {
                       totalPages={overduePageModel.totalPages}
                       total={overduePageModel.total}
                       onPrev={() => setPageOverdue((p) => Math.max(1, p - 1))}
-                      onNext={() => setPageOverdue((p) => Math.min(overduePageModel.totalPages, p + 1))}
+                      onNext={() =>
+                        setPageOverdue((p) =>
+                          Math.min(overduePageModel.totalPages, p + 1),
+                        )
+                      }
                     />
                   </div>
                 )}
@@ -1106,23 +1307,55 @@ export default function Reports() {
                 <p style={styles.sectionSub}>Paginated for performance.</p>
 
                 {sitesPageModel.total === 0 ? (
-                  <EmptyState title="No sites match" subtitle="Try clearing search or changing date filter" />
+                  <EmptyState
+                    title="No sites match"
+                    subtitle="Try clearing search or changing date filter"
+                  />
                 ) : (
                   <div style={{ marginTop: 10 }}>
                     {sitesPageModel.items.map((s) => (
                       <div key={s.siteId} style={styles.card}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 10,
+                          }}
+                        >
                           <div>
-                            <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a" }}>
+                            <div
+                              style={{
+                                fontSize: 14,
+                                fontWeight: 900,
+                                color: "#0f172a",
+                              }}
+                            >
                               {s.name}
                             </div>
 
-                            <div style={{ fontSize: 12, marginTop: 4, color: "#475569" }}>
-                              Engineer: <b style={{ color: "#0f172a" }}>{s.engineer}</b> • Current Week:{" "}
-                              <b style={{ color: "#0f172a" }}>{s.currentWeekKey}</b>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                marginTop: 4,
+                                color: "#475569",
+                              }}
+                            >
+                              Engineer:{" "}
+                              <b style={{ color: "#0f172a" }}>{s.engineer}</b> •
+                              Current Week:{" "}
+                              <b style={{ color: "#0f172a" }}>
+                                {s.currentWeekKey}
+                              </b>
                             </div>
 
-                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 6,
+                                flexWrap: "wrap",
+                                marginTop: 8,
+                              }}
+                            >
                               <MiniBadge text={`Total: ${s.total}`} />
                               <MiniBadge text={`Pending: ${s.pending}`} />
                               <MiniBadge text={`Done: ${s.done}`} />
@@ -1132,7 +1365,9 @@ export default function Reports() {
                             </div>
                           </div>
 
-                          <div style={{ display: "flex", alignItems: "center" }}>
+                          <div
+                            style={{ display: "flex", alignItems: "center" }}
+                          >
                             <button
                               style={styles.pill(false)}
                               onClick={() => {
@@ -1154,7 +1389,11 @@ export default function Reports() {
                       totalPages={sitesPageModel.totalPages}
                       total={sitesPageModel.total}
                       onPrev={() => setPageSites((p) => Math.max(1, p - 1))}
-                      onNext={() => setPageSites((p) => Math.min(sitesPageModel.totalPages, p + 1))}
+                      onNext={() =>
+                        setPageSites((p) =>
+                          Math.min(sitesPageModel.totalPages, p + 1),
+                        )
+                      }
                     />
                   </div>
                 )}
@@ -1224,14 +1463,23 @@ export default function Reports() {
                 </div>
 
                 <div style={{ fontSize: 12, marginTop: 10, color: "#475569" }}>
-                  Current Week: <b style={{ color: "#0f172a" }}>{selectedSite?.currentWeekKey || "-"}</b> • Engineer:{" "}
-                  <b style={{ color: "#0f172a" }}>{selectedSite?.assignedEngineerName || "-"}</b>
+                  Current Week:{" "}
+                  <b style={{ color: "#0f172a" }}>
+                    {selectedSite?.currentWeekKey || "-"}
+                  </b>{" "}
+                  • Engineer:{" "}
+                  <b style={{ color: "#0f172a" }}>
+                    {selectedSite?.assignedEngineerName || "-"}
+                  </b>
                 </div>
               </div>
 
               <div style={{ marginTop: 12 }}>
                 {tasksPageModel.total === 0 ? (
-                  <EmptyState title="No tasks found" subtitle="Try changing week filter or clearing search" />
+                  <EmptyState
+                    title="No tasks found"
+                    subtitle="Try changing week filter or clearing search"
+                  />
                 ) : (
                   <>
                     {tasksPageModel.items.map((t) => {
@@ -1246,34 +1494,78 @@ export default function Reports() {
                           key={t.id}
                           style={{
                             ...styles.card,
-                            border: isOverdue ? "2px solid #0f172a" : "1px solid #e2e8f0",
-                            background: isOverdue ? "linear-gradient(180deg,#fff,#fff6f6)" : "#fff",
+                            border: isOverdue
+                              ? "2px solid #0f172a"
+                              : "1px solid #e2e8f0",
+                            background: isOverdue
+                              ? "linear-gradient(180deg,#fff,#fff6f6)"
+                              : "#fff",
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 10,
+                            }}
+                          >
                             <div>
-                              <div style={{ fontWeight: 900, color: "#0f172a" }}>{t.title || "Task"}</div>
+                              <div
+                                style={{ fontWeight: 900, color: "#0f172a" }}
+                              >
+                                {t.title || "Task"}
+                              </div>
 
-                              <div style={{ fontSize: 12, marginTop: 4, color: "#475569" }}>
-                                Status: <b style={{ color: "#0f172a" }}>{t.status || "PENDING"}</b> • Week:{" "}
-                                <b style={{ color: "#0f172a" }}>{t.weekKey || "-"}</b>
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  marginTop: 4,
+                                  color: "#475569",
+                                }}
+                              >
+                                Status:{" "}
+                                <b style={{ color: "#0f172a" }}>
+                                  {t.status || "PENDING"}
+                                </b>{" "}
+                                • Week:{" "}
+                                <b style={{ color: "#0f172a" }}>
+                                  {t.weekKey || "-"}
+                                </b>
                               </div>
 
                               {(t.pendingWeeks || 0) >= 1 && (
-                                <div style={{ fontSize: 12, marginTop: 4, color: "#475569" }}>
-                                  ↪ Carried: <b style={{ color: "#0f172a" }}>{t.pendingWeeks} week(s)</b>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    marginTop: 4,
+                                    color: "#475569",
+                                  }}
+                                >
+                                  ↪ Carried:{" "}
+                                  <b style={{ color: "#0f172a" }}>
+                                    {t.pendingWeeks} week(s)
+                                  </b>
                                 </div>
                               )}
 
                               {isOverdue && (
-                                <div style={{ fontSize: 12, marginTop: 6, fontWeight: 800, color: "#991b1b" }}>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    marginTop: 6,
+                                    fontWeight: 800,
+                                    color: "#991b1b",
+                                  }}
+                                >
                                   🔥 Overdue Task
                                 </div>
                               )}
                             </div>
 
                             <div style={{ fontSize: 11, color: "#94a3b8" }}>
-                              {safeDate(t.createdAt) ? safeDate(t.createdAt).toLocaleString() : ""}
+                              {safeDate(t.createdAt)
+                                ? safeDate(t.createdAt).toLocaleString()
+                                : ""}
                             </div>
                           </div>
                         </div>
@@ -1285,7 +1577,11 @@ export default function Reports() {
                       totalPages={tasksPageModel.totalPages}
                       total={tasksPageModel.total}
                       onPrev={() => setPageTasks((p) => Math.max(1, p - 1))}
-                      onNext={() => setPageTasks((p) => Math.min(tasksPageModel.totalPages, p + 1))}
+                      onNext={() =>
+                        setPageTasks((p) =>
+                          Math.min(tasksPageModel.totalPages, p + 1),
+                        )
+                      }
                     />
                   </>
                 )}
@@ -1296,17 +1592,34 @@ export default function Reports() {
           {/* ENGINEERS TAB */}
           {!loading && tab === "ENGINEERS" && (
             <div style={styles.section}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
                 <div>
-                  <h3 style={{ ...styles.sectionTitle, marginBottom: 6 }}>👷 Engineer Performance</h3>
+                  <h3 style={{ ...styles.sectionTitle, marginBottom: 6 }}>
+                    👷 Engineer Performance
+                  </h3>
                   <div style={{ fontSize: 12, color: "#64748b" }}>
                     Search + pagination + drilldown.
                   </div>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>Sort:</span>
-                  <select style={styles.select} value={engineerSort} onChange={(e) => setEngineerSort(e.target.value)}>
+                  <span
+                    style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}
+                  >
+                    Sort:
+                  </span>
+                  <select
+                    style={styles.select}
+                    value={engineerSort}
+                    onChange={(e) => setEngineerSort(e.target.value)}
+                  >
                     <option value="MOST_PENDING">Most Pending</option>
                     <option value="MOST_OVERDUE">Most Overdue</option>
                     <option value="BEST_COMPLETION">Best Completion</option>
@@ -1316,25 +1629,56 @@ export default function Reports() {
 
               <div style={{ marginTop: 12 }}>
                 {engineersPageModel.total === 0 ? (
-                  <EmptyState title="No engineers match" subtitle="Try clearing search" />
+                  <EmptyState
+                    title="No engineers match"
+                    subtitle="Try clearing search"
+                  />
                 ) : (
                   <>
                     {engineersPageModel.items.map((e) => (
                       <div key={e.engineerId} style={styles.card}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 10,
+                          }}
+                        >
                           <div>
-                            <div style={{ fontWeight: 900, color: "#0f172a", fontSize: 14 }}>
+                            <div
+                              style={{
+                                fontWeight: 900,
+                                color: "#0f172a",
+                                fontSize: 14,
+                              }}
+                            >
                               {e.engineerName}
                             </div>
-                            <div style={{ fontSize: 12, marginTop: 4, color: "#475569" }}>
-                              Sites Assigned: <b style={{ color: "#0f172a" }}>{e.sitesCount}</b>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                marginTop: 4,
+                                color: "#475569",
+                              }}
+                            >
+                              Sites Assigned:{" "}
+                              <b style={{ color: "#0f172a" }}>{e.sitesCount}</b>
                             </div>
                           </div>
 
                           <div style={{ textAlign: "right" }}>
-                            <MiniBadge text={`✅ Completion: ${percent(e.completionRate)}`} />
-                            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
-                              Total Tasks: <b style={{ color: "#0f172a" }}>{e.total}</b>
+                            <MiniBadge
+                              text={`✅ Completion: ${percent(e.completionRate)}`}
+                            />
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: "#94a3b8",
+                                marginTop: 6,
+                              }}
+                            >
+                              Total Tasks:{" "}
+                              <b style={{ color: "#0f172a" }}>{e.total}</b>
                             </div>
 
                             <div
@@ -1360,7 +1704,11 @@ export default function Reports() {
                               <button
                                 style={styles.pill(false)}
                                 onClick={() => {
-                                  const firstSite = sites.find((s) => (s.assignedEngineerId || "") === e.engineerId);
+                                  const firstSite = sites.find(
+                                    (s) =>
+                                      (s.assignedEngineerId || "") ===
+                                      e.engineerId,
+                                  );
 
                                   if (firstSite) {
                                     setSelectedSiteId(firstSite.id);
@@ -1368,7 +1716,10 @@ export default function Reports() {
                                     setSelectedWeekKey("");
                                     setTab("SITE");
                                   } else {
-                                    showError(null, "No site assigned to this engineer");
+                                    showError(
+                                      null,
+                                      "No site assigned to this engineer",
+                                    );
                                   }
                                 }}
                               >
@@ -1415,7 +1766,11 @@ export default function Reports() {
                       totalPages={engineersPageModel.totalPages}
                       total={engineersPageModel.total}
                       onPrev={() => setPageEngineers((p) => Math.max(1, p - 1))}
-                      onNext={() => setPageEngineers((p) => Math.min(engineersPageModel.totalPages, p + 1))}
+                      onNext={() =>
+                        setPageEngineers((p) =>
+                          Math.min(engineersPageModel.totalPages, p + 1),
+                        )
+                      }
                     />
                   </>
                 )}
@@ -1424,7 +1779,8 @@ export default function Reports() {
           )}
 
           <div style={styles.footer}>
-            © {new Date().getFullYear()} RP Construction Tracker • Reports Snapshot (Phase 6.2)
+            © {new Date().getFullYear()} RP Construction Tracker • Reports
+            Snapshot (Phase 6.2)
           </div>
         </div>
       </div>
