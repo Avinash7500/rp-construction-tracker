@@ -13,7 +13,10 @@ import SkeletonBox from "../components/SkeletonBox";
 import EmptyState from "../components/EmptyState";
 import { useAuth } from "../context/AuthContext";
 import { carryForwardToNextWeek } from "../services/carryForward";
-import { formatMarathiWeekFromDate } from "../utils/marathiWeekFormat";
+import {
+  formatMarathiWeekFromDate,
+  formatMarathiWeekFromWeekKey,
+} from "../utils/marathiWeekFormat";
 
 import {
   collection,
@@ -48,7 +51,6 @@ const SNAPSHOT_FILTERS = {
   DUE_TODAY: "DUE_TODAY",
   OVERDUE: "OVERDUE",
   HIGH_PENDING: "HIGH_PENDING",
-  DUE_TOMORROW: "DUE_TOMORROW",
 };
 
 function safeToDate(v) {
@@ -378,8 +380,6 @@ function Engineer() {
     const todayStart = startOfDay(new Date());
     const tomorrowStart = new Date(todayStart);
     tomorrowStart.setDate(todayStart.getDate() + 1);
-    const dayAfterTomorrowStart = new Date(todayStart);
-    dayAfterTomorrowStart.setDate(todayStart.getDate() + 2);
 
     const total = tasks.length;
     const pending = tasks.filter((t) => t.status === "PENDING").length;
@@ -395,11 +395,6 @@ function Engineer() {
       const due = safeToDate(t.expectedCompletionDate);
       return !!due && due.getTime() >= todayStart.getTime() && due.getTime() < tomorrowStart.getTime();
     }).length;
-    const dueTomorrow = tasks.filter((t) => {
-      if (t.status !== "PENDING") return false;
-      const due = safeToDate(t.expectedCompletionDate);
-      return !!due && due.getTime() >= tomorrowStart.getTime() && due.getTime() < dayAfterTomorrowStart.getTime();
-    }).length;
     const highPriorityPending = tasks.filter(
       (t) => t.status === "PENDING" && (t.priority || "NORMAL") === "HIGH",
     ).length;
@@ -411,7 +406,6 @@ function Engineer() {
       cancelled,
       overdue,
       dueToday,
-      dueTomorrow,
       highPriorityPending,
       completionPct,
     };
@@ -442,8 +436,6 @@ function Engineer() {
     const todayStart = startOfDay(new Date());
     const tomorrowStart = new Date(todayStart);
     tomorrowStart.setDate(todayStart.getDate() + 1);
-    const dayAfterTomorrowStart = new Date(todayStart);
-    dayAfterTomorrowStart.setDate(todayStart.getDate() + 2);
     const q = siteTaskSearch.trim().toLowerCase();
 
     return tasks.filter((t) => {
@@ -457,12 +449,6 @@ function Engineer() {
         !!due &&
         due.getTime() >= todayStart.getTime() &&
         due.getTime() < tomorrowStart.getTime();
-      const isDueTomorrow =
-        t.status === "PENDING" &&
-        !!due &&
-        due.getTime() >= tomorrowStart.getTime() &&
-        due.getTime() < dayAfterTomorrowStart.getTime();
-
       if (snapshotFilter === SNAPSHOT_FILTERS.DUE_TODAY && !isDueToday) return false;
       if (snapshotFilter === SNAPSHOT_FILTERS.OVERDUE && !isOverdue) return false;
       if (
@@ -471,7 +457,6 @@ function Engineer() {
       ) {
         return false;
       }
-      if (snapshotFilter === SNAPSHOT_FILTERS.DUE_TOMORROW && !isDueTomorrow) return false;
 
       if (!q) return true;
       const haystack = [t.title || "", t.dayName || "", t.weekKey || ""]
@@ -856,7 +841,7 @@ function Engineer() {
                     </div>
                     <div className="card-footer">
                       <div className="meta-item">
-                        Week: <strong>{site.currentWeekKey}</strong>
+                        Week: <strong>{formatMarathiWeekFromWeekKey(site.currentWeekKey)}</strong>
                       </div>
                     </div>
                   </div>
@@ -899,7 +884,7 @@ function Engineer() {
               <div className="alert-content">
                 <span className="pulse-dot"></span>
                 <p>
-                  <strong>Site Health:</strong> Pending: <b>{summary.pending}</b> | Done: <b>{summary.done}</b> | Overdue: <b>{summary.overdue}</b> | Week: <b>{formatMarathiWeekFromDate(new Date())}</b>
+                  <strong>Site Health:</strong> Pending: <b>{summary.pending}</b> | Done: <b>{summary.done}</b> | Overdue: <b>{summary.overdue}</b> | Week: <b>{formatMarathiWeekFromWeekKey(selectedSite?.currentWeekKey)}</b>
                 </p>
               </div>
               <div className="alert-btns">
@@ -942,17 +927,6 @@ function Engineer() {
               >
                 <span className="snapshot-label">High Priority Pending</span>
                 <span className="snapshot-value">{summary.highPriorityPending}</span>
-              </button>
-              <button
-                className={`today-snapshot-card ${snapshotFilter === SNAPSHOT_FILTERS.DUE_TOMORROW ? "active" : ""}`}
-                onClick={() =>
-                  setSnapshotFilter((prev) =>
-                    prev === SNAPSHOT_FILTERS.DUE_TOMORROW ? SNAPSHOT_FILTERS.ALL : SNAPSHOT_FILTERS.DUE_TOMORROW,
-                  )
-                }
-              >
-                <span className="snapshot-label">Due Tomorrow</span>
-                <span className="snapshot-value">{summary.dueTomorrow}</span>
               </button>
             </div>
               <div className="detail-grid">
@@ -1117,17 +1091,17 @@ function Engineer() {
                             key={task.id}
                             className={`task-card-v2 ${task.status === "DONE" ? "is-completed" : ""} ${highlightClass}`}
                           >
-                            <div className="task-checkbox-wrap">
-                              <input
-                                type="checkbox"
-                                checked={selectedTaskIds.includes(task.id)}
-                                onChange={() => toggleTaskSelection(task.id)}
-                              />
-                            </div>
                             <div className={`task-priority-indicator ${task.priority === "HIGH" ? "high-priority" : "normal-priority"}`}></div>
                             <div className="task-content-main">
                               <div className="task-title-row">
-                                <h5 className="task-title-v2">{task.title}</h5>
+                                <div className="task-checkbox-title">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedTaskIds.includes(task.id)}
+                                    onChange={() => toggleTaskSelection(task.id)}
+                                  />
+                                  <h5 className="task-title-v2">{task.title}</h5>
+                                </div>
                                 <span className={`task-status-badge ${statusBadgeTone} ${statusAgeClass}`}>
                                   {getTaskStatusBadge(task, pendingDays, isOverdue)}
                                 </span>
@@ -1157,6 +1131,7 @@ function Engineer() {
                                 </div>
                               )}
                             </div>
+                            <div className="task-mobile-divider"></div>
                             <div className="task-actions-refined">
                               {task.status !== "DONE" ? (
                                 <button className="btn-pro-action btn-done" disabled={updatingTaskId === task.id} onClick={() => updateTaskStatus(task.id, "DONE")}>Done</button>

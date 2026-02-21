@@ -41,3 +41,25 @@ export function formatMarathiWeekFromDate(inputDate) {
   return `${monthName} - ${weekLabel}`;
 }
 
+function isoWeekStartDate(year, week) {
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const mondayWeek1 = new Date(jan4);
+  mondayWeek1.setDate(jan4.getDate() - jan4Day + 1);
+  const result = new Date(mondayWeek1);
+  result.setDate(mondayWeek1.getDate() + (week - 1) * 7);
+  return result;
+}
+
+export function formatMarathiWeekFromWeekKey(weekKey) {
+  const s = (weekKey || "").toString().trim();
+  const m = s.match(/^(\d{4})-W(\d{1,2})$/i);
+  if (!m) return "-";
+  const year = Number(m[1]);
+  const week = Number(m[2]);
+  if (!Number.isInteger(year) || !Number.isInteger(week) || week < 1 || week > 53) {
+    return "-";
+  }
+  const date = isoWeekStartDate(year, week);
+  return formatMarathiWeekFromDate(date);
+}

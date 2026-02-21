@@ -128,62 +128,71 @@
 .btn-add-primary { background: #2563eb; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; }
 
 @media (max-width: 768px) {
+  .admin-dashboard .admin-header-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .admin-dashboard .header-info {
+    width: 100%;
+    min-width: 0;
+  }
+  .admin-dashboard .header-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px !important;
+    align-items: stretch;
+  }
+  .admin-dashboard .header-actions button {
+    width: 100%;
+    min-height: 44px;
+  }
+
   .task-form-grid { grid-template-columns: 1fr; }
   .task-card-v2 {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-areas:
-      "checkbox content"
-      "indicator indicator"
-      "actions actions";
-    align-items: start;
-    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
     padding: 14px;
     overflow: hidden;
   }
-  .task-checkbox-wrap {
-    grid-area: checkbox;
-    margin-right: 0;
-    margin-top: 2px;
-  }
   .task-content-main {
-    grid-area: content;
     min-width: 0;
     width: 100%;
   }
   .task-priority-indicator {
-    grid-area: indicator;
     width: 100%;
     height: 4px;
     border-radius: 999px;
   }
-  .task-actions-refined {
-    grid-area: actions;
+  .task-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
     width: 100%;
   }
-  .task-actions-refined .btn-pro-action,
-  .task-actions-refined .btn-done,
-  .task-actions-refined .btn-reopen {
+  .task-checkbox-title {
     width: 100%;
-    min-height: 44px;
+    align-items: flex-start;
+    gap: 10px;
   }
-  .task-title-v2 {
+  .task-checkbox-title .task-title-v2 {
+    flex: 1 1 auto;
     font-size: 15px;
     line-height: 1.35;
     word-break: break-word;
   }
-  .task-title-row {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 8px;
-  }
   .task-status-badge {
     min-height: 28px;
+    align-self: flex-start;
   }
   .task-meta-row {
     flex-direction: column;
     align-items: flex-start;
-    gap: 6px;
+    gap: 8px;
+    margin-top: 10px;
   }
   .task-meta-item {
     width: 100%;
@@ -196,6 +205,23 @@
   .timeline-toggle-btn {
     min-height: 40px;
     width: 100%;
+    margin-top: 12px;
+  }
+  .task-mobile-divider {
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: #e2e8f0;
+    margin: 2px 0;
+  }
+  .task-actions-refined {
+    width: 100%;
+  }
+  .task-actions-refined .btn-pro-action,
+  .task-actions-refined .btn-done,
+  .task-actions-refined .btn-reopen {
+    width: 100%;
+    min-height: 44px;
   }
   .today-snapshot-grid {
     grid-template-columns: 1fr;
@@ -376,7 +402,7 @@
 
 .today-snapshot-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -497,6 +523,25 @@
   gap: 12px;
 }
 
+.task-checkbox-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.task-checkbox-title input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.task-title-v2 {
+  margin: 0;
+  min-width: 0;
+}
+
 .task-status-badge {
   display: inline-flex;
   align-items: center;
@@ -565,6 +610,10 @@
   font-size: 12px;
   color: #0f172a;
   font-weight: 700;
+}
+
+.task-mobile-divider {
+  display: none;
 }
 
 /* Done - Light Green */
@@ -659,12 +708,5 @@
   }
   .week-close-grid {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .task-title-row {
-    align-items: flex-start;
-    flex-direction: column;
   }
 }

@@ -27,6 +27,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { getISOWeekKey } from "../utils/weekUtils";
+import { formatMarathiWeekFromDate } from "../utils/marathiWeekFormat";
 
 function Admin() {
   const navigate = useNavigate();
@@ -810,7 +811,7 @@ function Admin() {
                                 </div>
                                 <div className="info-column">
                                   <span className="info-label">WEEK</span>
-                                  <span className="info-value-bold">{task.weekKey}</span>
+                                  <span className="info-value-bold">{formatMarathiWeekFromDate(task.expectedCompletionDate)}</span>
                                 </div>
                                 {task.dayName && (
                                   <div className="info-column">
