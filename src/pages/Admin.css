@@ -954,6 +954,74 @@
   .meta-item strong {
     word-break: break-word;
   }
+
+  /* Admin Site Detail task cards - mobile stability */
+  .task-card-v2 {
+    flex-direction: column;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .task-content-main {
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .task-primary-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .task-title-v2 {
+    width: 100%;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .badge-container {
+    width: 100%;
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .task-info-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .info-column {
+    min-width: 0;
+  }
+
+  .info-value-bold,
+  .info-value-date {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .task-actions-refined {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #f1f5f9;
+    padding: 10px 12px 12px;
+    flex-wrap: wrap;
+    justify-content: stretch;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .task-actions-refined .btn-pro-action,
+  .task-actions-refined .btn-done,
+  .task-actions-refined .btn-delete {
+    width: 100%;
+    min-height: 42px;
+    justify-content: center;
+  }
 }
 .sheet-action-card {
   background: #f8fafc;
