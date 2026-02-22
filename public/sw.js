@@ -8,7 +8,13 @@
 */
 
 const CACHE_NAME = "rp-construction-tracker-v1";
-const APP_SHELL = ["/", "/index.html", "/manifest.json"];
+// Resolve app base path from registration scope so this SW works on root or sub-path deploys.
+const BASE_PATH = new URL(self.registration.scope).pathname;
+const APP_SHELL = [
+  BASE_PATH,
+  `${BASE_PATH}index.html`,
+  `${BASE_PATH}manifest.json`,
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -43,7 +49,9 @@ self.addEventListener("fetch", (event) => {
   if (req.mode === "navigate") {
     event.respondWith(
       fetch(req).catch(() =>
-        caches.match("/index.html").then((resp) => resp || caches.match("/")),
+        caches
+          .match(`${BASE_PATH}index.html`)
+          .then((resp) => resp || caches.match(BASE_PATH)),
       ),
     );
     return;
@@ -63,4 +71,3 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
-

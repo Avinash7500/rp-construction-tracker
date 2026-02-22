@@ -13,7 +13,9 @@ import { Toaster } from "react-hot-toast";
 */
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
+    // Use Vite base URL so SW registration works in root or sub-path deployments.
+    const swUrl = `${import.meta.env.BASE_URL}sw.js`;
+    navigator.serviceWorker.register(swUrl).catch(() => {
       // Keep app behavior unchanged if SW registration fails.
     });
   });
