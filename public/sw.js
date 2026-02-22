@@ -7,7 +7,7 @@
   - Provides a basic offline fallback for SPA navigation.
 */
 
-const CACHE_NAME = "rp-construction-tracker-v1";
+const CACHE_NAME = "rp-construction-tracker-v2";
 // Resolve app base path from registration scope so this SW works on root or sub-path deploys.
 const BASE_PATH = new URL(self.registration.scope).pathname;
 const APP_SHELL = [

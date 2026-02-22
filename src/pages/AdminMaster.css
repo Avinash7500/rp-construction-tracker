@@ -193,6 +193,49 @@
     .master-grid { grid-template-columns: 1fr; }
   }
 
+  @media (max-width: 768px) {
+    /* Mobile stack fix:
+       Force the master sections into a single vertical flow to avoid partial side-by-side rendering. */
+    .master-page,
+    .admin-dashboard {
+      width: 100%;
+      max-width: 100% !important;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+
+    /* Switch grid container to column layout on tablets/mobile for predictable stacking order:
+       Engineers -> Accountants -> Sites (DOM order). */
+    .master-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    /* Ensure each section card fills available width and never keeps desktop span behavior. */
+    .master-grid > .master-section-card {
+      width: 100%;
+      max-width: 100%;
+      margin-bottom: 0.75rem;
+      grid-column: auto !important;
+      min-height: auto;
+      box-sizing: border-box;
+    }
+
+    /* Keep table content inside section width on small screens until 480px card-mode kicks in. */
+    .master-data-table {
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    .master-data-table th,
+    .master-data-table td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+  }
+
   .master-table-container {
     background: white;
     border: 1px solid var(--admin-border);
@@ -267,4 +310,100 @@
 .action-icon-btn.delete:hover {
   background: #fee2e2;
   border-color: #fecaca;
+}
+
+@media (max-width: 480px) {
+  .master-page {
+    max-width: 100% !important;
+  }
+
+  .master-grid {
+    gap: 1rem;
+  }
+
+  .master-section-card {
+    min-height: auto;
+    overflow: hidden;
+  }
+
+  .master-data-table {
+    display: block;
+    width: 100%;
+  }
+
+  .master-data-table thead {
+    display: none;
+  }
+
+  .master-data-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .master-data-table tr {
+    display: block;
+    width: 100%;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 10px 12px;
+    box-sizing: border-box;
+  }
+
+  .master-data-table td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    height: auto;
+    padding: 6px 0;
+    border-bottom: none;
+    box-sizing: border-box;
+  }
+
+  .master-data-table td::before {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex: 0 0 auto;
+  }
+
+  .master-data-table td:nth-child(1)::before {
+    content: "Name / Status";
+  }
+
+  .master-data-table td:nth-child(2):not(.actions-cell)::before {
+    content: "Sites / Tasks";
+  }
+
+  .master-data-table td.actions-cell::before {
+    content: "Manage";
+  }
+
+  .row-status-group {
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+  }
+
+  .clickable-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .actions-cell {
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: 6px;
+    column-gap: 8px;
+  }
+
+  .action-icon-btn {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+  }
 }

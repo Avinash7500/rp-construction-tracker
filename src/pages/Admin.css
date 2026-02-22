@@ -205,15 +205,47 @@
 .btn-add-task-pro:disabled { background: #cbd5e1 !important; cursor: not-allowed; }
 
 /* --- MODAL ENHANCEMENTS --- */
-.modal-create-site { max-width: 480px !important; border-radius: 16px !important; overflow: hidden; padding: 0 !important; }
-.modal-header-pro { background: #f8fafc; padding: 1.5rem 2rem; border-bottom: 1px solid var(--admin-border); }
-.modal-title-main { font-size: 1.25rem; font-weight: 800; color: var(--admin-blue); margin: 0 0 4px 0; }
-.modal-subtitle { font-size: 0.85rem; color: var(--admin-text-secondary); margin: 0; }
+/* Keep create-site card visual language aligned with dashboard cards (radius, border, shadow depth). */
+.modal-create-site {
+  max-width: 480px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-card-bg);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  padding: 0 !important;
+}
+.modal-header-pro {
+  background: #f8fafc;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+/* Slight heading/subheading spacing polish for cleaner hierarchy. */
+.modal-title-main {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--admin-blue);
+  margin: 0 0 6px 0;
+}
+.modal-subtitle {
+  font-size: 0.85rem;
+  color: var(--admin-text-secondary);
+  margin: 0;
+  line-height: 1.45;
+}
 .form-container-pro { padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .form-group-pro { display: flex; flex-direction: column; gap: 6px; }
 .form-label-pro { font-size: 0.85rem; font-weight: 700; color: var(--admin-blue); text-transform: uppercase; letter-spacing: 0.02em; }
 .form-input-pro, .form-select-pro { width: 100%; padding: 12px 16px; border: 1.5px solid var(--admin-border); border-radius: 10px; font-size: 0.95rem; outline: none; background: white; color: var(--admin-text-primary); }
-.modal-actions-pro { padding: 1.25rem 2rem; background: #f8fafc; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--admin-border); }
+.modal-actions-pro {
+  padding: 1.25rem 2rem;
+  background: #f8fafc;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--admin-border);
+}
 .btn-ghost-pro { background: transparent !important; color: var(--admin-text-secondary) !important; border: none !important; font-weight: 600 !important; padding: 10px 20px !important; cursor: pointer; }
 .btn-confirm-pro { background: var(--admin-blue) !important; color: white !important; border-radius: 8px !important; padding: 10px 24px !important; font-weight: 700 !important; box-shadow: 0 4px 6px rgba(15, 23, 42, 0.2) !important; transition: transform 0.1s ease !important; }
 
@@ -815,6 +847,28 @@
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
 }
 
+/* Site-level weekly analytics actions:
+   keeps report controls aligned with existing admin card/button style. */
+.site-report-toolbar {
+  margin-bottom: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  background: #fff;
+  display: grid;
+  grid-template-columns: auto minmax(180px, 240px) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.site-report-week-select {
+  width: 100%;
+}
+
+.site-report-download-btn {
+  white-space: nowrap;
+}
+
 .badge-content-v5 {
   display: flex;
   flex-direction: column;
@@ -864,6 +918,18 @@
   .engineer-badge-pill {
     width: fit-content;
   }
+
+  .site-report-toolbar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .site-report-toolbar .btn-muted-action,
+  .site-report-toolbar .site-report-download-btn {
+    width: 100%;
+    min-height: 42px;
+    margin-left: 0;
+  }
 }
 
 /* Mobile-only Admin dashboard refinement */
@@ -871,6 +937,40 @@
   .admin-dashboard {
     padding: 1rem;
     overflow-x: hidden;
+  }
+
+  .task-controls-sticky {
+    padding: 0.75rem 0.875rem;
+    overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .controls-top-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .tab-group-v2 {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tab-btn-v2 {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    justify-content: center;
+    padding: 8px 10px;
+    box-sizing: border-box;
+  }
+
+  .tab-btn-v2 .tab-count {
+    flex: 0 0 auto;
   }
 
   .sites-section-header {
@@ -1021,6 +1121,36 @@
     width: 100%;
     min-height: 42px;
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Create Site modal mobile action polish:
+     stack controls for comfortable taps and prevent cramped alignment. */
+  .modal-header-pro,
+  .form-container-pro,
+  .modal-actions-pro {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .modal-actions-pro {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .modal-actions-pro .btn-ghost-pro,
+  .modal-actions-pro .btn-confirm-pro {
+    width: 100%;
+    min-height: 42px;
+    margin: 0 !important;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .tab-btn-v2 {
+    flex-basis: 100%;
   }
 }
 .sheet-action-card {

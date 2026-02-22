@@ -28,6 +28,7 @@ import {
 import { db } from "../firebase/firebaseConfig";
 import { getISOWeekKey } from "../utils/weekUtils";
 import { formatMarathiWeekFromDate } from "../utils/marathiWeekFormat";
+import { exportSiteWeeklyReportPdf } from "../utils/exportSiteWeeklyReportPdf";
 
 function Admin() {
   const navigate = useNavigate();
@@ -63,6 +64,8 @@ function Admin() {
   const [weekFilter, setWeekFilter] = useState("ALL_WEEKS");
   const [availableWeeks, setAvailableWeeks] = useState([]);
   const [selectedWeekKey, setSelectedWeekKey] = useState("");
+  const [reportWeekKey, setReportWeekKey] = useState("");
+  const [downloadingWeeklyReport, setDownloadingWeeklyReport] = useState(false);
   const [reassignEngineerUid, setReassignEngineerUid] = useState("");
   const [reassigning, setReassigning] = useState(false);
 
@@ -149,6 +152,14 @@ function Admin() {
     loadEngineers();
     loadAllTasksForAdminStats();
   }, []);
+
+  useEffect(() => {
+    if (!selectedSite) {
+      setReportWeekKey("");
+      return;
+    }
+    setReportWeekKey(selectedSite.currentWeekKey || "");
+  }, [selectedSite?.id, selectedSite?.currentWeekKey]);
 
   const handleLogout = async () => {
     try {
@@ -364,6 +375,54 @@ function Admin() {
     return 0;
   });
 
+  const reportWeekOptions = useMemo(() => {
+    if (!selectedSite) return [];
+    const allWeeks = new Set([
+      ...(availableWeeks || []),
+      selectedSite.currentWeekKey || "",
+    ]);
+    return Array.from(allWeeks).filter(Boolean).sort();
+  }, [availableWeeks, selectedSite]);
+
+  const downloadWeeklySiteReport = async () => {
+    if (!selectedSite?.id) return;
+    const targetWeek = reportWeekKey || selectedSite.currentWeekKey;
+    if (!targetWeek) {
+      showError(null, "No week available for this site");
+      return;
+    }
+
+    try {
+      setDownloadingWeeklyReport(true);
+
+      // Week filtering: report includes only tasks mapped to the selected weekKey.
+      const weeklyTasks = tasks.filter(
+        (t) => t.siteId === selectedSite.id && t.weekKey === targetWeek,
+      );
+
+      // Carry-forward detection: respect explicit flag if present, and fallback
+      // to carry-forward counter used by the existing weekly transition flow.
+      const normalized = weeklyTasks.map((t) => ({
+        ...t,
+        isCarryForward: t.isCarryForward === true || (t.pendingWeeks || 0) > 0,
+      }));
+
+      // Summary calculations are produced in the export utility:
+      // total/completed/pending/carry-forward/completion % from filtered tasks.
+      exportSiteWeeklyReportPdf({
+        siteName: selectedSite.name || "Unnamed Site",
+        weekKey: targetWeek,
+        tasks: normalized,
+      });
+
+      showSuccess(`Weekly report downloaded (${targetWeek})`);
+    } catch (e) {
+      showError(e, "Failed to download weekly report");
+    } finally {
+      setDownloadingWeeklyReport(false);
+    }
+  };
+
   const reassignEngineer = async () => {
     if (!selectedSite?.id || !reassignEngineerUid) return showError(null, "Select engineer first");
     if (reassignEngineerUid === selectedSite.assignedEngineerId) return showError(null, "Same engineer already assigned");
@@ -494,7 +553,7 @@ function Admin() {
                   onClick={handleCreateSite}
                   disabled={!newSiteName.trim() || !selectedEngineerUid}
                 >
-                  🚀 Initialize Site
+                  Create Site
                 </Button>
               </div>
             </div>
@@ -568,6 +627,36 @@ function Admin() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="site-report-toolbar">
+              <Button className="btn-muted-action" onClick={() => navigate("/admin/reports")}>
+                Analytics
+              </Button>
+
+              <select
+                className="form-select-pro-sm site-report-week-select"
+                value={reportWeekKey}
+                onChange={(e) => setReportWeekKey(e.target.value)}
+              >
+                {reportWeekOptions.length === 0 ? (
+                  <option value="">No week available</option>
+                ) : (
+                  reportWeekOptions.map((wk) => (
+                    <option key={wk} value={wk}>
+                      {wk}
+                    </option>
+                  ))
+                )}
+              </select>
+
+              <Button
+                className="btn-add-task-pro site-report-download-btn"
+                loading={downloadingWeeklyReport}
+                onClick={downloadWeeklySiteReport}
+              >
+                Download Weekly Report
+              </Button>
             </div>
 
             <div className="detail-grid">
@@ -848,3 +937,4 @@ function Admin() {
 }
 
 export default Admin;
+

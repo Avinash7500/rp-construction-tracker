@@ -71,9 +71,9 @@ function StatPill({ label, value }) {
 const styles = {
   pageBg: {
     minHeight: "100vh",
-    background:
-      "radial-gradient(1200px 500px at 0% 0%, #e0f2fe 0%, rgba(224,242,254,0) 60%), radial-gradient(1000px 500px at 100% 0%, #fae8ff 0%, rgba(250,232,255,0) 60%), #f8fafc",
+    background: "#f8fafc",
     padding: 12,
+    overflowX: "hidden",
   },
   container: { maxWidth: 1100, margin: "0 auto" },
 
@@ -120,7 +120,8 @@ const styles = {
     fontSize: 12,
     background: "#fff",
     outline: "none",
-    minWidth: 240,
+    minWidth: "min(240px, 100%)",
+    maxWidth: "100%",
   },
 
   section: {
@@ -130,6 +131,7 @@ const styles = {
     padding: 12,
     boxShadow: "0 10px 25px rgba(15,23,42,0.06)",
     marginTop: 12,
+    overflow: "hidden",
   },
 
   card: {
@@ -139,6 +141,7 @@ const styles = {
     padding: 12,
     boxShadow: "0 10px 25px rgba(15,23,42,0.06)",
     marginBottom: 10,
+    overflow: "hidden",
   },
 
   footer: {

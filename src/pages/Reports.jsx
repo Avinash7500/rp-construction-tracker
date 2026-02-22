@@ -101,9 +101,9 @@ function paginate(list, page, pageSize) {
 const styles = {
   pageBg: {
     minHeight: "100vh",
-    background:
-      "radial-gradient(1200px 500px at 0% 0%, #e0f2fe 0%, rgba(224,242,254,0) 60%), radial-gradient(1000px 500px at 100% 0%, #fae8ff 0%, rgba(250,232,255,0) 60%), #f8fafc",
+    background: "#f8fafc",
     padding: 12,
+    overflowX: "hidden",
   },
   container: {
     maxWidth: 1100,
@@ -175,7 +175,8 @@ const styles = {
     fontSize: 12,
     background: "#fff",
     outline: "none",
-    minWidth: 220,
+    minWidth: "min(220px, 100%)",
+    maxWidth: "100%",
   },
 
   section: {
@@ -185,6 +186,7 @@ const styles = {
     padding: 12,
     boxShadow: "0 10px 25px rgba(15,23,42,0.06)",
     marginTop: 12,
+    overflow: "hidden",
   },
 
   sectionTitle: { margin: 0, fontSize: 14, fontWeight: 800, color: "#0f172a" },
@@ -197,6 +199,7 @@ const styles = {
     padding: 12,
     boxShadow: "0 10px 25px rgba(15,23,42,0.06)",
     marginBottom: 10,
+    overflow: "hidden",
   },
 
   softCard: {
@@ -206,6 +209,7 @@ const styles = {
     padding: 12,
     boxShadow: "0 10px 25px rgba(15,23,42,0.06)",
     marginBottom: 10,
+    overflow: "hidden",
   },
 
   footer: {
@@ -240,7 +244,8 @@ function StatRow({ label, value }) {
       style={{
         display: "flex",
         justifyContent: "space-between",
-        gap: 10,
+                            gap: 10,
+                            flexWrap: "wrap",
         fontSize: 12,
       }}
     >
@@ -671,6 +676,33 @@ export default function Reports() {
     });
   }, [allSitesSummary, search]);
 
+  const siteProgressTrend = useMemo(() => {
+    const weekMap = new Map();
+    filteredTasksByDate.forEach((t) => {
+      const wk = t.weekKey || "UNKNOWN";
+      if (!weekMap.has(wk)) {
+        weekMap.set(wk, { weekKey: wk, total: 0, done: 0, pending: 0, overdue: 0 });
+      }
+      const row = weekMap.get(wk);
+      row.total += 1;
+      if (t.status === "DONE") row.done += 1;
+      if (t.status === "PENDING") row.pending += 1;
+      const site = t.siteId ? siteMap.get(t.siteId) : null;
+      const currentWeekKey = site?.currentWeekKey || "";
+      if (t.status === "PENDING" && t.weekKey && currentWeekKey && t.weekKey < currentWeekKey) {
+        row.overdue += 1;
+      }
+    });
+
+    return Array.from(weekMap.values())
+      .sort((a, b) => (a.weekKey < b.weekKey ? -1 : 1))
+      .slice(-8)
+      .map((r) => ({
+        ...r,
+        completionRate: r.total > 0 ? Math.round((r.done / r.total) * 100) : 0,
+      }));
+  }, [filteredTasksByDate, siteMap]);
+
   // Week list from filtered tasks
   useEffect(() => {
     if (!selectedSiteId) return;
@@ -778,7 +810,7 @@ export default function Reports() {
       });
       setAutoWidth(wsOverdue);
 
-      const wsSites = wb.addWorksheet("All Sites Summary");
+      const wsSites = wb.addWorksheet("Weekly Site Summary");
       wsSites.columns = [
         { header: "Site", key: "site" },
         { header: "Engineer", key: "engineer" },
@@ -945,7 +977,7 @@ export default function Reports() {
 
       let y = doc.lastAutoTable.finalY + 10;
       doc.setFontSize(11);
-      doc.text("All Sites Summary", 14, y);
+      doc.text("Weekly Site Summary", 14, y);
 
       autoTable(doc, {
         startY: y + 3,
@@ -1029,8 +1061,7 @@ export default function Reports() {
           <div style={styles.hero}>
             <h1 style={styles.heroTitle}>📊 Reports Dashboard</h1>
             <p style={styles.heroSub}>
-              Track site progress, engineer performance, overdue tasks & export
-              reports (Excel/PDF).
+              5 core reports for Admin/Owner decisions: Weekly Site Summary, Overdue Tasks, Site Progress Trend, Engineer Performance, Snapshot History.
             </p>
           </div>
 
@@ -1045,12 +1076,6 @@ export default function Reports() {
               </button>
               <button
                 style={styles.pill(false)}
-                onClick={() => navigate("/admin/reports/advanced")}
-              >
-                ⚙ Advanced Reports
-              </button>
-              <button
-                style={styles.pill(false)}
                 onClick={() => navigate("/admin/reports/snapshots")}
               >
                 📌 Snapshots
@@ -1059,22 +1084,26 @@ export default function Reports() {
                 style={styles.pill(tab === "ALL")}
                 onClick={() => setTab("ALL")}
               >
-                📌 All Sites
+                📌 Weekly Summary
               </button>
 
               <button
                 style={styles.pill(tab === "SITE")}
                 onClick={() => setTab("SITE")}
               >
-                🧾 Site Wise
+                🧾 Site Detail
               </button>
 
               <button
                 style={styles.pill(tab === "ENGINEERS")}
                 onClick={() => setTab("ENGINEERS")}
               >
-                👷 Engineers
-              </button>
+                👷 Engineer Performance</button>
+            </div>
+
+            {/* Consolidation note: Advanced Reports has been merged into this page to reduce duplicate report surfaces. */}
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 8 }}>
+              Consolidated module: Weekly Summary, Overdue, Trend, Site Detail, Engineer Performance.
             </div>
 
             <div style={styles.controlsWrap}>
@@ -1223,6 +1252,7 @@ export default function Reports() {
                             display: "flex",
                             justifyContent: "space-between",
                             gap: 10,
+                            flexWrap: "wrap",
                           }}
                         >
                           <div>
@@ -1303,7 +1333,7 @@ export default function Reports() {
               </div>
 
               <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>📌 All Sites Summary</h3>
+                <h3 style={styles.sectionTitle}>📌 Weekly Site Summary</h3>
                 <p style={styles.sectionSub}>Paginated for performance.</p>
 
                 {sitesPageModel.total === 0 ? (
@@ -1320,6 +1350,7 @@ export default function Reports() {
                             display: "flex",
                             justifyContent: "space-between",
                             gap: 10,
+                            flexWrap: "wrap",
                           }}
                         >
                           <div>
@@ -1398,13 +1429,70 @@ export default function Reports() {
                   </div>
                 )}
               </div>
+
+              <div style={styles.section}>
+                <h3 style={styles.sectionTitle}>Site Progress Trend</h3>
+                <p style={styles.sectionSub}>
+                  Week-wise completion trend based on current filtered task set.
+                </p>
+
+                {siteProgressTrend.length === 0 ? (
+                  <EmptyState title="No trend data" subtitle="No week data available for selected filter." />
+                ) : (
+                  <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                    {siteProgressTrend.map((r) => (
+                      <div key={r.weekKey} style={styles.card}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: 10,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <div style={{ fontWeight: 900, color: "#0f172a", fontSize: 13 }}>
+                            {r.weekKey}
+                          </div>
+                          <MiniBadge text={`Completion: ${r.completionRate}%`} />
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: 10,
+                            height: 10,
+                            borderRadius: 999,
+                            background: "#e2e8f0",
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${r.completionRate}%`,
+                              height: "100%",
+                              background: "#16a34a",
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <MiniBadge text={`Total: ${r.total}`} />
+                          <MiniBadge text={`Done: ${r.done}`} />
+                          <MiniBadge text={`Pending: ${r.pending}`} />
+                          <MiniBadge text={`Overdue: ${r.overdue}`} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </>
           )}
 
           {/* SITE TAB */}
           {!loading && tab === "SITE" && (
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>🧾 Site Wise Report</h3>
+              <h3 style={styles.sectionTitle}>🧾 Site Detail Report</h3>
               <p style={styles.sectionSub}>Tasks paginated + searchable.</p>
 
               <div
@@ -1506,7 +1594,8 @@ export default function Reports() {
                             style={{
                               display: "flex",
                               justifyContent: "space-between",
-                              gap: 10,
+                            gap: 10,
+                            flexWrap: "wrap",
                             }}
                           >
                             <div>
@@ -1642,6 +1731,7 @@ export default function Reports() {
                             display: "flex",
                             justifyContent: "space-between",
                             gap: 10,
+                            flexWrap: "wrap",
                           }}
                         >
                           <div>
@@ -1787,3 +1877,10 @@ export default function Reports() {
     </Layout>
   );
 }
+
+
+
+
+
+
+
