@@ -19,6 +19,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
+import { formatMarathiWeekFromWeekKey } from "../utils/marathiWeekFormat";
 
 // ✅ ExcelJS for colorful excel
 import ExcelJS from "exceljs";
@@ -95,6 +96,12 @@ function paginate(list, page, pageSize) {
     page: safePage,
     pageSize,
   };
+}
+
+// Keep weekKey values unchanged for filtering/storage; convert only visible labels.
+function weekLabel(weekKey) {
+  const label = formatMarathiWeekFromWeekKey(weekKey);
+  return label !== "-" ? label : weekKey || "-";
 }
 
 /* ----------------- UI (Phase 5.6) ----------------- */
@@ -1288,9 +1295,9 @@ export default function Reports() {
                                 marginTop: 8,
                               }}
                             >
-                              <MiniBadge text={`Task Week: ${t.weekKey}`} />
+                              <MiniBadge text={`Task Week: ${weekLabel(t.weekKey)}`} />
                               <MiniBadge
-                                text={`Current: ${t.currentWeekKey}`}
+                                text={`Current: ${weekLabel(t.currentWeekKey)}`}
                               />
                               <MiniBadge
                                 text={`↪ PendingWeeks: ${t.pendingWeeks}`}
@@ -1375,7 +1382,7 @@ export default function Reports() {
                               <b style={{ color: "#0f172a" }}>{s.engineer}</b> •
                               Current Week:{" "}
                               <b style={{ color: "#0f172a" }}>
-                                {s.currentWeekKey}
+                                {weekLabel(s.currentWeekKey)}
                               </b>
                             </div>
 
@@ -1452,7 +1459,7 @@ export default function Reports() {
                           }}
                         >
                           <div style={{ fontWeight: 900, color: "#0f172a", fontSize: 13 }}>
-                            {r.weekKey}
+                            {weekLabel(r.weekKey)}
                           </div>
                           <MiniBadge text={`Completion: ${r.completionRate}%`} />
                         </div>
@@ -1540,10 +1547,10 @@ export default function Reports() {
                       value={selectedWeekKey}
                       onChange={(e) => setSelectedWeekKey(e.target.value)}
                     >
-                      <option value="">Select weekKey</option>
+                      <option value="">Select week</option>
                       {availableWeeks.map((wk) => (
                         <option key={wk} value={wk}>
-                          {wk}
+                          {weekLabel(wk)}
                         </option>
                       ))}
                     </select>
@@ -1553,7 +1560,7 @@ export default function Reports() {
                 <div style={{ fontSize: 12, marginTop: 10, color: "#475569" }}>
                   Current Week:{" "}
                   <b style={{ color: "#0f172a" }}>
-                    {selectedSite?.currentWeekKey || "-"}
+                    {weekLabel(selectedSite?.currentWeekKey)}
                   </b>{" "}
                   • Engineer:{" "}
                   <b style={{ color: "#0f172a" }}>
@@ -1618,7 +1625,7 @@ export default function Reports() {
                                 </b>{" "}
                                 • Week:{" "}
                                 <b style={{ color: "#0f172a" }}>
-                                  {t.weekKey || "-"}
+                                  {weekLabel(t.weekKey)}
                                 </b>
                               </div>
 

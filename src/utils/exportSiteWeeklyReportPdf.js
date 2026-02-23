@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { formatMarathiWeekFromWeekKey } from "./marathiWeekFormat";
 
 function safeToDate(value) {
   if (!value) return null;
@@ -15,6 +16,43 @@ function safeToDate(value) {
 
 function pad2(n) {
   return String(n).padStart(2, "0");
+}
+
+function arrayBufferToBase64(buffer) {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  return btoa(binary);
+}
+
+function isSupportedTtfBuffer(buffer) {
+  const bytes = new Uint8Array(buffer || new ArrayBuffer(0));
+  if (bytes.length < 4) return false;
+
+  // TrueType signatures supported by jsPDF TTF parser.
+  const isTtf =
+    bytes[0] === 0x00 &&
+    bytes[1] === 0x01 &&
+    bytes[2] === 0x00 &&
+    bytes[3] === 0x00;
+  const isOtf =
+    bytes[0] === 0x4f && // O
+    bytes[1] === 0x54 && // T
+    bytes[2] === 0x54 && // T
+    bytes[3] === 0x4f; // O
+
+  // Explicitly reject TTC (font collections), which caused parse errors.
+  const isTtc =
+    bytes[0] === 0x74 && // t
+    bytes[1] === 0x74 && // t
+    bytes[2] === 0x63 && // c
+    bytes[3] === 0x66; // f
+
+  return (isTtf || isOtf) && !isTtc;
 }
 
 function formatDate(value) {
@@ -80,7 +118,72 @@ function diffDaysFromNow(value) {
   return Math.max(0, diff);
 }
 
-export function exportSiteWeeklyReportPdf({
+function getEnglishWeekLabel(weekKey) {
+  const m = /^(\d{4})-W(\d{1,2})$/i.exec((weekKey || "").toString().trim());
+  if (!m) return weekKey || "-";
+  return `${m[1]} - Week ${Number(m[2])}`;
+}
+
+let marathiFontRegistered = false;
+const ENABLE_MARATHI_PDF_FONT = false;
+
+async function ensureMarathiPdfFont(pdf) {
+  if (!ENABLE_MARATHI_PDF_FONT) return false;
+  if (marathiFontRegistered) {
+    try {
+      pdf.setFont("NotoSansDevanagari", "normal");
+      // Ensure usable width metrics exist; otherwise jsPDF autoTable will crash.
+      pdf.getStringUnitWidth("test");
+      pdf.getStringUnitWidth("अ");
+      return true;
+    } catch {
+      marathiFontRegistered = false;
+      return false;
+    }
+  }
+
+  try {
+    const base = import.meta.env.BASE_URL || "/";
+    const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+    // jsPDF custom font path must be a Unicode-capable .ttf with cmap table.
+    // .ttc font collections (e.g. Nirmala.ttc) are not reliably supported and
+    // trigger "No unicode cmap for font" + widths errors.
+    const response = await fetch(`${normalizedBase}fonts/NotoSansDevanagari-Regular.ttf`);
+    if (!response.ok) return false;
+
+    const buffer = await response.arrayBuffer();
+    if (!isSupportedTtfBuffer(buffer)) {
+      return false;
+    }
+    const base64 = arrayBufferToBase64(buffer);
+
+    const fontFile = "NotoSansDevanagari-Regular.ttf";
+    const fontName = "NotoSansDevanagari";
+    pdf.addFileToVFS(fontFile, base64);
+    pdf.addFont(fontFile, fontName, "normal");
+
+    const fontList = pdf.getFontList?.() || {};
+    const hasNormal = Array.isArray(fontList[fontName]) && fontList[fontName].includes("normal");
+    if (!hasNormal) return false;
+
+    pdf.setFont(fontName, "normal");
+    // Validate parsed font metrics before enabling this font globally.
+    pdf.getStringUnitWidth("test");
+    pdf.getStringUnitWidth("अ");
+    marathiFontRegistered = true;
+    return true;
+  } catch {
+    marathiFontRegistered = false;
+    try {
+      pdf.setFont("helvetica", "normal");
+    } catch {
+      // no-op
+    }
+    return false;
+  }
+}
+
+export async function exportSiteWeeklyReportPdf({
   siteName,
   weekKey,
   tasks,
@@ -135,6 +238,37 @@ export function exportSiteWeeklyReportPdf({
   const pendingRatio = total > 0 ? pending / total : 0;
 
   const pdf = new jsPDF("p", "mm", "a4");
+  const hasMarathiFont = await ensureMarathiPdfFont(pdf);
+  if (!hasMarathiFont) {
+    // Fallback prevents malformed glyphs if the custom font fails to load.
+    pdf.setFont("helvetica", "normal");
+  }
+
+  // If Unicode font is unavailable, sanitize strings so jsPDF width calculation
+  // never receives unsupported glyphs (prevents "reading 'widths'" crash).
+  const pdfText = (value) => {
+    const text = (value ?? "-").toString();
+    if (hasMarathiFont) return text;
+    // ASCII fallback for environments without Marathi PDF font support.
+    // Cleanly collapse unsupported glyphs so table cells don't show noise.
+    const cleaned = text
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\x20-\x7E]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!cleaned) return "-";
+    // If only punctuation/symbols remain, show a clean placeholder.
+    if (!/[A-Za-z0-9]/.test(cleaned)) return "-";
+    return cleaned;
+  };
+
+  // Display Marathi week text only when Unicode font is active in PDF output.
+  const marathiWeekLabel = formatMarathiWeekFromWeekKey(weekKey);
+  const weekDisplay = hasMarathiFont && marathiWeekLabel !== "-"
+    ? marathiWeekLabel
+    : getEnglishWeekLabel(weekKey);
+
   pdf.setTextColor(...COLOR.textDark);
   pdf.setFontSize(16);
   pdf.text("RP Construction Tracker", 14, 14);
@@ -142,9 +276,9 @@ export function exportSiteWeeklyReportPdf({
   pdf.text("Weekly Site Report", 14, 21);
 
   pdf.setFontSize(10);
-  pdf.text(`Site Name: ${siteName || "-"}`, 14, 29);
-  pdf.text(`Week: ${weekKey || "-"}`, 14, 34);
-  pdf.text(`Week Range: ${getSunSatRangeLabel(weekKey)}`, 14, 39);
+  pdf.text(pdfText(`Site Name: ${siteName || "-"}`), 14, 29);
+  pdf.text(pdfText(`Week: ${weekDisplay}`), 14, 34);
+  pdf.text(pdfText(`Week Range: ${getSunSatRangeLabel(weekKey)}`), 14, 39);
   pdf.text(`Generated: ${new Date().toLocaleString("en-GB")}`, 14, 44);
 
   autoTable(pdf, {
@@ -157,8 +291,19 @@ export function exportSiteWeeklyReportPdf({
       ["Carry Forward", String(carryForward)],
       ["Completion Rate", `${completionPct}%`],
     ],
-    headStyles: { fillColor: COLOR.header },
-    styles: { fontSize: 9, cellPadding: 2.5 },
+    headStyles: {
+      fillColor: COLOR.header,
+      font: hasMarathiFont ? "NotoSansDevanagari" : "helvetica",
+      fontStyle: hasMarathiFont ? "normal" : "bold",
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 2.5,
+      font: hasMarathiFont ? "NotoSansDevanagari" : "helvetica",
+      fontStyle: "normal",
+      overflow: "linebreak",
+      valign: "middle",
+    },
     tableWidth: 90,
     // Summary color logic:
     // - Metric values are color-coded for fast executive scanning.
@@ -181,7 +326,7 @@ export function exportSiteWeeklyReportPdf({
       } else if (metric === "Completion Rate" && pendingRatio > 0.5) {
         data.cell.styles.textColor = COLOR.completionRiskText;
         data.cell.styles.fillColor = COLOR.completionRiskBg;
-        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.fontStyle = hasMarathiFont ? "normal" : "bold";
       }
     },
   });
@@ -194,16 +339,34 @@ export function exportSiteWeeklyReportPdf({
     autoTable(pdf, {
       startY: tableStartY,
       head: [["Sr", "Task Name", "Type", "Status", "Expected Date", "Overdue Days"]],
-      body: rows.map((r) => [r.sr, r.title, r.type, r.status, r.expectedDate, r.overdueDays]),
-      headStyles: { fillColor: COLOR.header },
-      styles: { fontSize: 8, cellPadding: 2 },
+      body: rows.map((r) => [
+        r.sr,
+        pdfText(r.title),
+        pdfText(r.type),
+        pdfText(r.status),
+        pdfText(r.expectedDate),
+        pdfText(r.overdueDays),
+      ]),
+      headStyles: {
+        fillColor: COLOR.header,
+        font: hasMarathiFont ? "NotoSansDevanagari" : "helvetica",
+        fontStyle: hasMarathiFont ? "normal" : "bold",
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        font: hasMarathiFont ? "NotoSansDevanagari" : "helvetica",
+        fontStyle: "normal",
+        overflow: "linebreak",
+        valign: "middle",
+      },
       columnStyles: {
         0: { cellWidth: 10 },
-        1: { cellWidth: 55 },
-        2: { cellWidth: 45 },
-        3: { cellWidth: 22 },
-        4: { cellWidth: 28 },
-        5: { cellWidth: 24, halign: "center" },
+        1: { cellWidth: 56 },
+        2: { cellWidth: 38 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 26 },
+        5: { cellWidth: 20, halign: "center" },
       },
       // Conditional row styling:
       // - Detect per-row state using the original `rows` model via row index.
@@ -225,24 +388,24 @@ export function exportSiteWeeklyReportPdf({
         if (isStatusCol && isHighPending) {
           data.cell.styles.fillColor = COLOR.highPendingBg;
           data.cell.styles.textColor = COLOR.highPendingText;
-          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fontStyle = hasMarathiFont ? "normal" : "bold";
           return;
         }
 
         if (isStatusCol && isDone) {
           data.cell.styles.fillColor = COLOR.doneBg;
           data.cell.styles.textColor = COLOR.doneText;
-          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fontStyle = hasMarathiFont ? "normal" : "bold";
         } else if (isStatusCol && isPending) {
           data.cell.styles.fillColor = COLOR.pendingBg;
           data.cell.styles.textColor = COLOR.pendingText;
-          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fontStyle = hasMarathiFont ? "normal" : "bold";
         }
 
         if (isTypeCol && isCarryForward) {
           data.cell.styles.fillColor = COLOR.carryBg;
           data.cell.styles.textColor = COLOR.carryText;
-          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fontStyle = hasMarathiFont ? "normal" : "bold";
         }
       },
       didDrawPage: () => {

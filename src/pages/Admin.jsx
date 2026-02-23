@@ -27,7 +27,10 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { getISOWeekKey } from "../utils/weekUtils";
-import { formatMarathiWeekFromDate } from "../utils/marathiWeekFormat";
+import {
+  formatMarathiWeekFromDate,
+  formatMarathiWeekFromWeekKey,
+} from "../utils/marathiWeekFormat";
 import { exportSiteWeeklyReportPdf } from "../utils/exportSiteWeeklyReportPdf";
 
 function Admin() {
@@ -384,6 +387,12 @@ function Admin() {
     return Array.from(allWeeks).filter(Boolean).sort();
   }, [availableWeeks, selectedSite]);
 
+  // Keep raw weekKey for logic/storage and transform only visible UI labels to Marathi.
+  const getWeekDisplayLabel = (weekKey) => {
+    const label = formatMarathiWeekFromWeekKey(weekKey);
+    return label !== "-" ? label : weekKey || "—";
+  };
+
   const downloadWeeklySiteReport = async () => {
     if (!selectedSite?.id) return;
     const targetWeek = reportWeekKey || selectedSite.currentWeekKey;
@@ -409,13 +418,13 @@ function Admin() {
 
       // Summary calculations are produced in the export utility:
       // total/completed/pending/carry-forward/completion % from filtered tasks.
-      exportSiteWeeklyReportPdf({
+      await exportSiteWeeklyReportPdf({
         siteName: selectedSite.name || "Unnamed Site",
         weekKey: targetWeek,
         tasks: normalized,
       });
 
-      showSuccess(`Weekly report downloaded (${targetWeek})`);
+      showSuccess(`Weekly report downloaded (${getWeekDisplayLabel(targetWeek)})`);
     } catch (e) {
       showError(e, "Failed to download weekly report");
     } finally {
@@ -598,7 +607,7 @@ function Admin() {
                     </div>
                     <div className="card-footer">
                       <div className="meta-item"><span>Eng:</span> <strong>{site.assignedEngineerName || "N/A"}</strong></div>
-                      <div className="meta-item"><span>Week:</span> <strong>{site.currentWeekKey || "—"}</strong></div>
+                      <div className="meta-item"><span>Week:</span> <strong>{getWeekDisplayLabel(site.currentWeekKey)}</strong></div>
                     </div>
                   </div>
                 ))}
@@ -644,7 +653,7 @@ function Admin() {
                 ) : (
                   reportWeekOptions.map((wk) => (
                     <option key={wk} value={wk}>
-                      {wk}
+                      {getWeekDisplayLabel(wk)}
                     </option>
                   ))
                 )}
@@ -834,7 +843,7 @@ function Admin() {
                         <span className="indicator-text">
                           Showing: <strong>{taskFilter === 'ALL' ? 'All Tasks' : taskFilter}</strong>
                           <span className="text-divider">/</span>
-                          <strong>{weekFilter === 'CURRENT_WEEK' ? 'Current Week' : weekFilter === 'ALL_WEEKS' ? 'Full History' : selectedWeekKey}</strong>
+                          <strong>{weekFilter === 'CURRENT_WEEK' ? 'Current Week' : weekFilter === 'ALL_WEEKS' ? 'Full History' : getWeekDisplayLabel(selectedWeekKey)}</strong>
                         </span>
                       </div>
                       <div className="filter-block">
