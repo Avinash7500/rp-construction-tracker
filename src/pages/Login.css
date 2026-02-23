@@ -71,6 +71,27 @@ h2 {
   letter-spacing: 2px;
 }
 
+.login-tagline {
+  text-align: center;
+  color: rgba(248, 250, 252, 0.92);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+  margin: -16px auto 24px;
+  padding: 6px 14px;
+  width: fit-content;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 165, 0, 0.14),
+    rgba(255, 165, 0, 0.06)
+  );
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-radius: 999px;
+  overflow-wrap: anywhere;
+  animation: tagline-fade-in 0.6s ease-out;
+}
+
 .input-group {
   position: relative;
   margin-bottom: 25px;
@@ -258,4 +279,147 @@ h2 {
 
 .signup-btn-link:active {
   transform: scale(0.98);
+}
+
+@media (max-width: 480px) {
+  /*
+    Mobile shape swap:
+    - Circular ring can clip on very small screens.
+    - On mobile we hide the circle and use a rectangular running line that
+      matches the login card footprint, so visuals stay contained.
+  */
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .container {
+    overflow: hidden;
+  }
+
+  .circle-container {
+    display: none;
+  }
+
+  .login-box {
+    --mobile-border-width: 4px;
+    --mobile-runner-length: 28%;
+    --mobile-edge-gap: 2px;
+    isolation: isolate;
+  }
+
+  .login-box::before {
+    content: "";
+    position: absolute;
+    inset: var(--mobile-edge-gap);
+    border-radius: 20px;
+    padding: var(--mobile-border-width);
+    /*
+      Base segmented ring to match the circle's dark bars look,
+      but projected on a rounded rectangle.
+    */
+    background: repeating-conic-gradient(
+      from 0deg,
+      #4a5f7f 0deg 6deg,
+      rgba(74, 95, 127, 0.15) 6deg 12deg
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .login-box::after {
+    content: "";
+    position: absolute;
+    top: var(--mobile-edge-gap);
+    left: var(--mobile-edge-gap);
+    width: var(--mobile-runner-length);
+    height: var(--mobile-border-width);
+    border-radius: 999px;
+    /*
+      Runner follows the rectangle edges (top/right/bottom/left), so motion
+      looks rectangular instead of circular and stays inside the card bounds.
+    */
+    background: linear-gradient(90deg, #ffb733, #ff8c00);
+    animation: login-box-border-run 3.2s linear infinite;
+    box-shadow: 0 0 10px rgba(255, 165, 0, 0.75);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .login-box > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .login-tagline {
+    font-size: 15px;
+    margin: -14px auto 20px;
+    padding: 5px 12px;
+    max-width: 100%;
+  }
+}
+
+@keyframes tagline-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes login-box-border-run {
+  0% {
+    top: var(--mobile-edge-gap);
+    left: var(--mobile-edge-gap);
+    width: var(--mobile-runner-length);
+    height: var(--mobile-border-width);
+  }
+  25% {
+    top: var(--mobile-edge-gap);
+    left: calc(100% - var(--mobile-runner-length) - var(--mobile-edge-gap));
+    width: var(--mobile-runner-length);
+    height: var(--mobile-border-width);
+  }
+  25.1% {
+    top: var(--mobile-edge-gap);
+    left: calc(100% - var(--mobile-border-width) - var(--mobile-edge-gap));
+    width: var(--mobile-border-width);
+    height: var(--mobile-runner-length);
+  }
+  50% {
+    top: calc(100% - var(--mobile-runner-length) - var(--mobile-edge-gap));
+    left: calc(100% - var(--mobile-border-width) - var(--mobile-edge-gap));
+    width: var(--mobile-border-width);
+    height: var(--mobile-runner-length);
+  }
+  50.1% {
+    top: calc(100% - var(--mobile-border-width) - var(--mobile-edge-gap));
+    left: calc(100% - var(--mobile-runner-length) - var(--mobile-edge-gap));
+    width: var(--mobile-runner-length);
+    height: var(--mobile-border-width);
+  }
+  75% {
+    top: calc(100% - var(--mobile-border-width) - var(--mobile-edge-gap));
+    left: var(--mobile-edge-gap);
+    width: var(--mobile-runner-length);
+    height: var(--mobile-border-width);
+  }
+  75.1% {
+    top: calc(100% - var(--mobile-runner-length) - var(--mobile-edge-gap));
+    left: var(--mobile-edge-gap);
+    width: var(--mobile-border-width);
+    height: var(--mobile-runner-length);
+  }
+  100% {
+    top: var(--mobile-edge-gap);
+    left: var(--mobile-edge-gap);
+    width: var(--mobile-border-width);
+    height: var(--mobile-runner-length);
+  }
 }

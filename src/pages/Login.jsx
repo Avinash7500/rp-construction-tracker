@@ -103,6 +103,7 @@ export default function Login() {
       <div className="circle-container" ref={circleRef}></div>
       <div className="login-box">
         <h2>Login</h2>
+        <p className="login-tagline">Track smarter. Build faster.</p>
         <form onSubmit={handleLogin}>
           <div className="input-group">
             <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
