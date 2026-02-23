@@ -251,7 +251,7 @@ export default function ReportsSnapshots() {
 
   return (
     <Layout>
-      <div style={styles.pageBg}>
+      <div className="admin-internal-theme reports-theme" style={styles.pageBg}>
         <div style={styles.container}>
           {/* Hero */}
           <div style={styles.hero}>

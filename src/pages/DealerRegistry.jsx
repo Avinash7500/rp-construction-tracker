@@ -80,7 +80,7 @@ function DealerRegistry() {
 
   return (
     <Layout>
-      <div className="admin-dashboard">
+      <div className="admin-dashboard accountant-theme">
         <div className="sticky-back-header-v5">
           <button
             className="btn-back-pro"

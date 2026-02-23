@@ -180,7 +180,7 @@ function LabourSheet() {
 
   return (
     <Layout>
-      <div className="admin-dashboard labour-page-container">
+      <div className="admin-dashboard labour-page-container accountant-theme">
         <div className="sticky-back-header-v5">
           <button className="btn-back-pro" onClick={() => navigate(-1)}>
             <span className="back-icon">←</span>

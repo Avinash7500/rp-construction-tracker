@@ -11,6 +11,9 @@ import ReportsAdvanced from "./pages/ReportsAdvanced";
 import ReportsSnapshots from "./pages/ReportsSnapshots";
 import ReportsSnapshotDetails from "./pages/ReportsSnapshotDetails";
 import AdminMaster from "./pages/AdminMaster";
+import ProjectEstimate from "./pages/ProjectEstimate";
+import AdminStageSetup from "./pages/AdminStageSetup";
+import EngineerExecutionStages from "./pages/EngineerExecutionStages";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // ✅ Accountant MIS Module Imports
@@ -71,7 +74,7 @@ export default function App() {
         }
       />
 
-      // Add this route inside your ProtectedRoute block
+      {/* Dealer master routes */}
       <Route
         path="/accountant/dealers"
         element={
@@ -117,8 +120,40 @@ export default function App() {
       <Route
         path="/admin"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
+          <ProtectedRoute role="ADMIN">
             <Admin />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/estimates"
+        element={
+          <ProtectedRoute role="ADMIN">
+            <ProjectEstimate />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/estimates/:estimateId"
+        element={
+          <ProtectedRoute role="ADMIN">
+            <ProjectEstimate />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/stages"
+        element={
+          <ProtectedRoute role="ADMIN">
+            <AdminStageSetup />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/stages/:siteId"
+        element={
+          <ProtectedRoute role="ADMIN">
+            <AdminStageSetup />
           </ProtectedRoute>
         }
       />
@@ -167,8 +202,24 @@ export default function App() {
       <Route
         path="/engineer"
         element={
-          <ProtectedRoute allowedRoles={["ENGINEER"]}>
+          <ProtectedRoute role="ENGINEER">
             <Engineer />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/engineer/stages"
+        element={
+          <ProtectedRoute role="ENGINEER">
+            <EngineerExecutionStages />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/engineer/stages/:siteId"
+        element={
+          <ProtectedRoute role="ENGINEER">
+            <EngineerExecutionStages />
           </ProtectedRoute>
         }
       />

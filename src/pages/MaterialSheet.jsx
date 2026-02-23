@@ -174,7 +174,7 @@ function MaterialSheet() {
 
   return (
     <Layout>
-      <div className="admin-dashboard material-page-container">
+      <div className="admin-dashboard material-page-container accountant-theme">
         <div className="sticky-back-header-v5">
           <button className="btn-back-pro" onClick={() => navigate(`/accountant/site/${siteId}/material`)}>
             <span className="back-icon">←</span>

@@ -32,6 +32,7 @@ import {
   formatMarathiWeekFromWeekKey,
 } from "../utils/marathiWeekFormat";
 import { exportSiteWeeklyReportPdf } from "../utils/exportSiteWeeklyReportPdf";
+import { initializeDefaultStagesForSite } from "../utils/stageWorkflow";
 
 function Admin() {
   const navigate = useNavigate();
@@ -184,7 +185,7 @@ function Admin() {
     try {
       setCreatingSite(true);
       const ref = collection(db, "sites");
-      await addDoc(ref, {
+      const siteRef = await addDoc(ref, {
         name,
         assignedEngineerId: selectedEngineerUid,
         assignedEngineerName: selectedEngineer?.name || "",
@@ -192,6 +193,13 @@ function Admin() {
         isCompleted: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+      });
+      // Initialize default stage workflow per site for controlled execution tracking.
+      await initializeDefaultStagesForSite({
+        siteId: siteRef.id,
+        assignedEngineerId: selectedEngineerUid,
+        assignedEngineerName: selectedEngineer?.name || "",
+        createdByName: "ADMIN",
       });
       showSuccess("Site created ✅");
       setNewSiteName("");
@@ -494,6 +502,12 @@ function Admin() {
                 </Button>
               </>
             )}
+            <Button className="btn-secondary-header" onClick={() => navigate("/admin/estimates")}>
+              Project Estimate
+            </Button>
+            <Button className="btn-secondary-header" onClick={() => navigate("/admin/stages")}>
+              Stage Setup
+            </Button>
             <Button className="btn-secondary-header" onClick={() => navigate("/admin/reports")}>Analytics</Button>
             <Button className="btn-danger-header" loading={loggingOut} onClick={handleLogout}>Logout</Button>
           </div>
@@ -639,6 +653,12 @@ function Admin() {
             </div>
 
             <div className="site-report-toolbar">
+              <Button
+                className="btn-muted-action"
+                onClick={() => navigate(`/admin/stages/${selectedSite.id}`)}
+              >
+                Stage Setup
+              </Button>
               <Button className="btn-muted-action" onClick={() => navigate("/admin/reports")}>
                 Analytics
               </Button>

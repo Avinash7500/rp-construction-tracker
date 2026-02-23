@@ -173,7 +173,7 @@ function AdminMaster() {
 
   return (
     <Layout>
-      <div className="admin-dashboard master-page">
+      <div className="admin-dashboard master-page admin-internal-theme">
         <header className="admin-header-card">
           <div className="header-info">
             <h1 className="header-title">Master Control Center</h1>

@@ -73,7 +73,7 @@ function AccountantDashboard() {
 
   return (
     <Layout>
-      <div className="admin-dashboard dashboard-container">
+      <div className="admin-dashboard dashboard-container accountant-theme">
         <header className="admin-header-card dashboard-header">
           <div className="header-info">
             <h1 className="header-title">Accountant MIS</h1>

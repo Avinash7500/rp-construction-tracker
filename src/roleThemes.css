@@ -1,0 +1,309 @@
+/* Role-based design system layer
+   - Visual-only overrides for consistency and premium SaaS feel
+   - Keeps business logic, routing, and data flow unchanged
+*/
+
+:root {
+  --rt-radius: 14px;
+  --rt-card-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  --rt-card-shadow-hover: 0 16px 28px rgba(15, 23, 42, 0.12);
+}
+
+/* ===== ADMIN INTERNAL (non-dashboard/non-estimate) ===== */
+.admin-internal-theme .admin-header-card {
+  border-radius: 16px;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
+}
+
+.admin-internal-theme .master-section-card {
+  border-radius: var(--rt-radius);
+  box-shadow: var(--rt-card-shadow);
+  transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
+}
+
+.admin-internal-theme .master-section-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--rt-card-shadow-hover);
+  border-color: #cbd5e1;
+}
+
+.admin-internal-theme .master-data-table tbody tr,
+.admin-internal-theme .master-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.admin-internal-theme .master-data-table tbody tr:hover,
+.admin-internal-theme .master-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* ===== ENGINEER THEME: steel + teal =====
+   Focuses on operational clarity, status, and task execution.
+*/
+.engineer-theme {
+  --eng-bg: #f4f7fa;
+  --eng-card: #ffffff;
+  --eng-border: #dbe4ec;
+  --eng-text: #1f2937;
+  --eng-muted: #64748b;
+  --eng-primary: #1f3b5c;
+  --eng-accent: #0f766e;
+}
+
+.engineer-theme {
+  background: var(--eng-bg);
+}
+
+.engineer-theme .admin-header-card {
+  border-radius: 16px;
+  padding: 1.2rem 1.4rem;
+  background: linear-gradient(135deg, #1b2a41 0%, #23395b 70%, #2b4a6f 100%);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 12px 24px rgba(31, 59, 92, 0.24);
+}
+
+.engineer-theme .btn-muted-action {
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  min-height: 40px;
+  transition: all 0.24s ease;
+}
+
+.engineer-theme .btn-muted-action:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.engineer-theme .btn-danger-header {
+  border-radius: 10px;
+  background: rgba(127, 29, 29, 0.85);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+.engineer-theme .task-creation-panel,
+.engineer-theme .task-manager-card,
+.engineer-theme .site-overview-bar,
+.engineer-theme .engineer-report-section,
+.engineer-theme .site-card-compact {
+  border-radius: var(--rt-radius);
+  border-color: var(--eng-border);
+  box-shadow: var(--rt-card-shadow);
+}
+
+.engineer-theme .site-card-compact,
+.engineer-theme .task-card-v2 {
+  transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
+}
+
+.engineer-theme .site-card-compact:hover,
+.engineer-theme .task-card-v2:hover {
+  transform: translateY(-2px);
+  border-color: #93c5fd;
+  box-shadow: var(--rt-card-shadow-hover);
+}
+
+.engineer-theme .task-card-v2 {
+  border-left: 4px solid #cbd5e1;
+}
+
+.engineer-theme .task-card-v2.is-overdue {
+  border-left-color: #ef4444;
+}
+
+.engineer-theme .task-card-v2.is-completed {
+  border-left-color: #10b981;
+}
+
+.engineer-theme .ui-badge.high {
+  background: #ecfeff;
+  color: #0f766e;
+  border: 1px solid #99f6e4;
+}
+
+.engineer-theme .ui-badge.overdue {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.engineer-theme .btn-add-task-pro {
+  background: linear-gradient(90deg, #0f766e, #0d9488) !important;
+  border: 1px solid #0f766e;
+  box-shadow: 0 10px 18px rgba(15, 118, 110, 0.26);
+}
+
+/* Engineer task "Done" action:
+   use a lighter success tone with strong text contrast for readability. */
+.engineer-theme .btn-pro-action.btn-done {
+  background: #6ee7b7 !important;
+  color: #064e3b !important;
+  border: 1px solid #34d399 !important;
+  box-shadow: 0 8px 14px rgba(16, 185, 129, 0.2);
+}
+
+.engineer-theme .btn-pro-action.btn-done:hover {
+  background: #34d399 !important;
+  color: #022c22 !important;
+}
+
+/* ===== ACCOUNTANT THEME: charcoal + emerald =====
+   Emphasizes trustworthy financial readability and totals.
+*/
+.accountant-theme {
+  --acc-bg: #f6f7f8;
+  --acc-card: #ffffff;
+  --acc-border: #d9dee3;
+  --acc-primary: #111827;
+  --acc-accent: #047857;
+  --acc-muted: #6b7280;
+}
+
+.accountant-theme {
+  background: var(--acc-bg);
+}
+
+.accountant-theme .admin-header-card {
+  border-radius: 16px;
+  padding: 1.2rem 1.4rem;
+  background: linear-gradient(135deg, #111827 0%, #1f2937 70%, #374151 100%);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 12px 24px rgba(17, 24, 39, 0.24);
+}
+
+.accountant-theme .btn-primary-v5,
+.accountant-theme .btn-submit-dealer,
+.accountant-theme .btn-archive-v5 {
+  background: linear-gradient(90deg, #047857, #059669) !important;
+  border: 1px solid #047857 !important;
+  color: #fff !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  transition: all 0.24s ease !important;
+}
+
+.accountant-theme .btn-primary-v5:hover,
+.accountant-theme .btn-submit-dealer:hover,
+.accountant-theme .btn-archive-v5:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(4, 120, 87, 0.24);
+}
+
+.accountant-theme .master-section-card,
+.accountant-theme .master-table-container,
+.accountant-theme .site-mobile-card,
+.accountant-theme .registry-card {
+  border-radius: var(--rt-radius) !important;
+  border: 1px solid var(--acc-border) !important;
+  box-shadow: var(--rt-card-shadow) !important;
+  transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
+}
+
+.accountant-theme .master-section-card:hover,
+.accountant-theme .master-table-container:hover,
+.accountant-theme .registry-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--rt-card-shadow-hover) !important;
+}
+
+.accountant-theme .master-table th,
+.accountant-theme .master-table-v2 th {
+  background: #f3f4f6 !important;
+  color: #4b5563 !important;
+  letter-spacing: 0.04em;
+}
+
+.accountant-theme .master-table tbody tr,
+.accountant-theme .master-table-v2 tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.accountant-theme .master-table tbody tr:hover,
+.accountant-theme .master-table-v2 tbody tr:hover {
+  background: #f8fafc !important;
+}
+
+.accountant-theme .text-right,
+.accountant-theme .total-spend-row .val {
+  font-variant-numeric: tabular-nums;
+}
+
+.accountant-theme .eng-name-v5 {
+  color: #10b981 !important;
+}
+
+.accountant-theme .site-count-pill {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+/* Global premium rhythm and micro interactions */
+.engineer-theme .task-input-pro-v2,
+.engineer-theme .task-select-pro-v2,
+.accountant-theme input,
+.accountant-theme select {
+  transition: border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.engineer-theme .task-input-pro-v2:focus,
+.engineer-theme .task-select-pro-v2:focus,
+.accountant-theme input:focus,
+.accountant-theme select:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+@media (max-width: 768px) {
+  .engineer-theme .header-actions,
+  .accountant-theme .header-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .engineer-theme .header-actions button,
+  .accountant-theme .header-actions button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .accountant-theme .master-table-container {
+    overflow-x: auto;
+  }
+}
+
+/* ===== Reports/Internal polish =====
+   Works alongside existing inline style objects by enhancing controls and rhythm.
+*/
+.reports-theme button {
+  border-radius: 10px;
+  transition: all 0.22s ease;
+}
+
+.reports-theme button:hover {
+  transform: translateY(-1px);
+}
+
+.reports-theme input,
+.reports-theme select {
+  border-radius: 10px;
+}
+
+.reports-theme table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.reports-theme th,
+.reports-theme td {
+  font-size: 0.82rem;
+}
+
+.reports-theme [style*="border: 1px solid #e2e8f0"] {
+  border-radius: 14px !important;
+  box-shadow: var(--rt-card-shadow) !important;
+}

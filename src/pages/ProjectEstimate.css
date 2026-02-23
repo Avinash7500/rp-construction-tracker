@@ -1,0 +1,698 @@
+/* Project Estimate UI refresh:
+   - Premium client-meeting layout with strong hierarchy.
+   - Card-based structure reduces "form-only" feel.
+   - Same dark-blue + amber accent language as existing RP theme.
+*/
+
+.estimate-page {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 1rem;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(14, 116, 144, 0.06), transparent 42%),
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.06), transparent 32%),
+    #f8fafc;
+}
+
+/* Hero header improves first-impression quality in client meetings. */
+.estimate-hero-card {
+  border-radius: 16px;
+  padding: 1.25rem 1.4rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #334155 100%);
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.estimate-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+  font-weight: 700;
+}
+
+.estimate-hero-left h1 {
+  margin: 0.35rem 0 0.3rem;
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.estimate-hero-left p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.estimate-hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-hero-primary,
+.btn-hero-secondary,
+.btn-subtle-inline,
+.btn-primary-inline {
+  border-radius: 10px;
+  padding: 9px 13px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.24s ease;
+}
+
+.btn-hero-primary,
+.btn-primary-inline {
+  border: 1px solid #f59e0b;
+  color: #fff;
+  background: linear-gradient(90deg, #f59e0b, #ea580c);
+  box-shadow: 0 8px 18px rgba(245, 158, 11, 0.28);
+}
+
+.btn-hero-primary:hover,
+.btn-primary-inline:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(245, 158, 11, 0.35);
+}
+
+.btn-hero-secondary {
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn-hero-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.btn-subtle-inline {
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  background: #f8fafc;
+}
+
+.btn-subtle-inline:hover {
+  border-color: #94a3b8;
+  background: #fff;
+}
+
+.estimate-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #1e293b;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 9px 13px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+
+.tab-btn:hover {
+  background: #f8fafc;
+}
+
+.tab-btn.active {
+  background: #0f172a;
+  color: #fff;
+  border-color: #0f172a;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.18);
+}
+
+/* Elevated cards + spacing create clean executive hierarchy. */
+.estimate-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.35rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.estimate-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08);
+  border-color: #cbd5e1;
+}
+
+.estimate-card h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.08rem;
+  line-height: 1.3;
+  font-weight: 800;
+}
+
+.estimate-card h4 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.section-head {
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.section-head p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.card-head-inline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 0.9rem;
+}
+
+/* Basic info now structured in balanced 2-column desktop layout. */
+.basic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.79rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.field-group input,
+.field-group select,
+.estimate-card table input,
+.estimate-card table select,
+.extra-choice-bottom input,
+.estimate-card > select {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-size: 0.86rem;
+  color: #0f172a;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease;
+}
+
+.field-group input:focus,
+.field-group select:focus,
+.estimate-card table input:focus,
+.estimate-card table select:focus,
+.extra-choice-bottom input:focus,
+.estimate-card > select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.field-rate input {
+  border-color: #f59e0b;
+  background: linear-gradient(180deg, #fff 0%, #fff7ed 100%);
+  font-weight: 700;
+}
+
+.inline-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.79rem;
+  color: #64748b;
+}
+
+.timeline-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Floor estimation mini-cards replace flat row/table appearance. */
+.floor-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.floor-edit-card {
+  border: 1px solid #dbe6f2;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  padding: 0.95rem;
+  transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
+}
+
+.floor-edit-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 20px rgba(30, 41, 59, 0.08);
+  border-color: #93c5fd;
+}
+
+.floor-edit-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0.7rem;
+}
+
+.floor-edit-top h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.floor-total-pill {
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 0.83rem;
+  font-weight: 800;
+}
+
+.floor-edit-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.floor-edit-meta {
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed #dbe6f2;
+  display: grid;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.floor-edit-actions {
+  margin-top: 0.7rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Selectable extras cards provide stronger visual decision states. */
+.extras-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+.extra-choice-card {
+  border: 1px solid #dbe4ef;
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: #f8fafc;
+  display: grid;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.24s ease;
+}
+
+.extra-choice-card:hover {
+  transform: translateY(-1px);
+  border-color: #94a3b8;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
+.extra-choice-card.is-selected {
+  background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+  border-color: #f59e0b;
+  box-shadow: 0 10px 18px rgba(245, 158, 11, 0.18);
+}
+
+.extra-choice-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1e293b;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.extra-choice-bottom {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+/* Premium tables with better row rhythm and hover cues. */
+.premium-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.premium-table th,
+.premium-table td {
+  padding: 9px;
+  text-align: left;
+  font-size: 0.82rem;
+}
+
+.premium-table th {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.premium-table tbody tr {
+  transition: background-color 0.22s ease;
+}
+
+.premium-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.premium-table td {
+  border-bottom: 1px solid #edf2f7;
+}
+
+.premium-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.premium-table td button {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.74rem;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+
+.premium-table td button:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.action-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.warn-text {
+  color: #b91c1c;
+  font-size: 0.82rem;
+  margin: 10px 0 0;
+  font-weight: 700;
+}
+
+.ok-text {
+  color: #166534;
+  font-size: 0.82rem;
+  margin: 10px 0 0;
+  font-weight: 700;
+}
+
+.estimate-footer {
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+  padding: 1.1rem 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.estimate-footer p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.estimate-footer h2 {
+  margin: 0.25rem 0 0;
+  color: #1d4ed8;
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+
+.estimate-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Footer sits on a light card, so secondary button needs dark text styling here. */
+.estimate-footer .btn-hero-secondary {
+  color: #1e293b;
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.estimate-footer .btn-hero-secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+/* Breakdown view keeps same premium style for admin + client walkthroughs. */
+.summary-hero {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 70%, #334155 100%);
+  color: #fff;
+  border-radius: 14px;
+  padding: 1.15rem 1.2rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.summary-hero h2 {
+  margin: 0.22rem 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.summary-total {
+  font-size: 2.05rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-top: 0.55rem;
+}
+
+.summary-grid {
+  margin-top: 0.78rem;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.summary-grid div {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.summary-grid span {
+  display: block;
+  font-size: 0.74rem;
+  opacity: 0.86;
+}
+
+.summary-grid strong {
+  font-size: 0.9rem;
+}
+
+.estimate-muted {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.summary-hero .estimate-muted {
+  color: #cbd5e1;
+}
+
+.floor-cards {
+  display: grid;
+  gap: 10px;
+}
+
+.floor-detail {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.68rem 0.8rem;
+  background: #fff;
+}
+
+.floor-detail summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.floor-meta {
+  margin-top: 0.55rem;
+  display: grid;
+  gap: 4px;
+}
+
+.floor-meta p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #334155;
+}
+
+.bar-row {
+  margin-bottom: 10px;
+}
+
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+  color: #334155;
+  font-size: 0.82rem;
+}
+
+.bar-track {
+  background: #e2e8f0;
+  border-radius: 999px;
+  height: 9px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1e293b, #64748b);
+}
+
+.timeline-list {
+  border-left: 2px solid #cbd5e1;
+  margin-left: 0.45rem;
+  padding-left: 1rem;
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.72rem 0.82rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stage-name {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.timeline-amount {
+  text-align: right;
+}
+
+.timeline-amount strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.88rem;
+}
+
+.timeline-amount span {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 980px) {
+  .floor-edit-grid,
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .extras-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .estimate-hero-card,
+  .estimate-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .estimate-hero-actions,
+  .estimate-actions {
+    width: 100%;
+  }
+
+  .btn-hero-primary,
+  .btn-hero-secondary,
+  .btn-subtle-inline,
+  .btn-primary-inline {
+    width: 100%;
+  }
+
+  .basic-grid,
+  .floor-edit-grid,
+  .floor-edit-fields,
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .estimate-tabs {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .tab-btn {
+    width: 100%;
+  }
+}

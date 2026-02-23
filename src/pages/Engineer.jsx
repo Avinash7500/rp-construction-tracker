@@ -668,13 +668,16 @@ function Engineer() {
 
   return (
     <Layout>
-      <div className="admin-dashboard">
+      <div className="admin-dashboard engineer-theme">
         <header className="admin-header-card">
           <div className="header-info">
             <h1 className="header-title">RP Construction Tracker</h1>
             <span className="header-badge">Engineer: {engineerName}</span>
           </div>
           <div className="header-actions" style={{ gap: 8 }}>
+            <Button className="btn-muted-action" onClick={() => navigate("/engineer/stages")}>
+              Execution Stages
+            </Button>
             <Button className="btn-muted-action" onClick={() => setShowReports((v) => !v)}>
               {showReports ? "Back to Dashboard" : "Engineer Reports"}
             </Button>

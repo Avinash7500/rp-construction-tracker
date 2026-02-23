@@ -51,6 +51,43 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    /* ---------- STAGE WORKFLOW (SITE SUBCOLLECTION) ---------- */
+    match /sites/{siteId}/executionStages/{stageId} {
+      function assignedEngineerForSite() {
+        return exists(/databases/$(database)/documents/sites/$(siteId))
+          && get(/databases/$(database)/documents/sites/$(siteId)).data.assignedEngineerId == uid();
+      }
+
+      // Admin has complete control of workflow orchestration.
+      allow read, write: if isAdmin();
+
+      // Accountant can view progress for monitoring/reporting.
+      allow read: if isAccountant();
+
+      // Engineer can only access workflow of assigned site.
+      allow read: if isEngineer() && assignedEngineerForSite();
+
+      // Engineer can update operational fields only (task updates, progress, delay logs).
+      allow update: if isEngineer()
+        && assignedEngineerForSite()
+        && request.resource.data.stageName == resource.data.stageName
+        && request.resource.data.phaseName == resource.data.phaseName
+        && request.resource.data.orderIndex == resource.data.orderIndex
+        && request.resource.data.assignedEngineerId == resource.data.assignedEngineerId
+        && request.resource.data.assignedEngineerName == resource.data.assignedEngineerName
+        && request.resource.data.dependencyRule == resource.data.dependencyRule
+        && request.resource.data.allowParallelExecution == resource.data.allowParallelExecution
+        && request.resource.data.overrideUnlocked == resource.data.overrideUnlocked
+        && request.resource.data.criticalStage == resource.data.criticalStage
+        && request.resource.data.estimatedStageCost == resource.data.estimatedStageCost
+        && request.resource.data.actualStageCost == resource.data.actualStageCost
+        && request.resource.data.variance == resource.data.variance
+        && request.resource.data.suggestedMaterials == resource.data.suggestedMaterials;
+
+      // Only admin can create/delete/reorder stage documents.
+      allow create, delete: if false;
+    }
+
     /* ---------- TASKS ---------- */
     match /tasks/{taskId} {
       allow read, write: if isAdmin();
@@ -103,6 +140,11 @@ service cloud.firestore {
     /* ---------- DEALER MASTER REGISTRY ---------- */
     match /dealers/{dealerId} {
       allow read, write: if isAdmin() || isAccountant();
+    }
+
+    /* ---------- PROJECT ESTIMATES ---------- */
+    match /projectEstimates/{estimateId} {
+      allow read, create, update, delete: if isAdmin();
     }
   }
 }
