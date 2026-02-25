@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
@@ -90,7 +89,15 @@ function fileStamp() {
 }
 
 function startOfDay(date = new Date()) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
 }
 
 function Engineer() {
@@ -135,6 +142,7 @@ function Engineer() {
   const [reportDateTo, setReportDateTo] = useState("");
   const [reportSort, setReportSort] = useState("UPDATED_DESC");
   const [reportPage, setReportPage] = useState(1);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setPageLoading(false), 600);
@@ -146,7 +154,11 @@ function Engineer() {
       setSitesLoading(true);
       if (!engineerUid) return;
       const ref = collection(db, "sites");
-      const q = query(ref, where("assignedEngineerId", "==", engineerUid), orderBy("createdAt", "desc"));
+      const q = query(
+        ref,
+        where("assignedEngineerId", "==", engineerUid),
+        orderBy("createdAt", "desc"),
+      );
       const snap = await getDocs(q);
       setSites(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (e) {
@@ -166,7 +178,7 @@ function Engineer() {
         where("siteId", "==", site.id),
         where("weekKey", "==", weekKey),
         where("assignedEngineerId", "==", engineerUid),
-        orderBy("createdAt", "desc")
+        orderBy("createdAt", "desc"),
       );
       const snap = await getDocs(q);
       setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -182,7 +194,11 @@ function Engineer() {
       setReportLoading(true);
       if (!engineerUid) return;
       const ref = collection(db, "tasks");
-      const q = query(ref, where("assignedEngineerId", "==", engineerUid), orderBy("createdAt", "desc"));
+      const q = query(
+        ref,
+        where("assignedEngineerId", "==", engineerUid),
+        orderBy("createdAt", "desc"),
+      );
       const snap = await getDocs(q);
       setAllEngineerTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (e) {
@@ -234,7 +250,9 @@ function Engineer() {
 
       const hasVeryOldTask = tasks.some((task) => {
         if (task.status !== "PENDING" || !task.statusUpdatedAt) return false;
-        const diffDays = (Date.now() - task.statusUpdatedAt.toDate().getTime()) / (1000 * 60 * 60 * 24);
+        const diffDays =
+          (Date.now() - task.statusUpdatedAt.toDate().getTime()) /
+          (1000 * 60 * 60 * 24);
         return diffDays >= 7;
       });
 
@@ -272,7 +290,9 @@ function Engineer() {
         status: "PENDING",
         priority: newTaskPriority,
         dayName: newTaskDayName || null,
-        expectedCompletionDate: Timestamp.fromDate(new Date(expectedCompletionDate)),
+        expectedCompletionDate: Timestamp.fromDate(
+          new Date(expectedCompletionDate),
+        ),
         createdBy: "ENGINEER",
         createdByUid: engineerUid,
         createdByName: engineerName,
@@ -314,7 +334,8 @@ function Engineer() {
 
   const onNextWeek = async (isAuto = false) => {
     const pendingCount = tasks.filter((t) => t.status === "PENDING").length;
-    if (pendingCount === 0) return !isAuto && showError(null, "No pending tasks");
+    if (pendingCount === 0)
+      return !isAuto && showError(null, "No pending tasks");
     if (!isAuto) {
       setShowWeekCloseModal(true);
       return;
@@ -323,7 +344,9 @@ function Engineer() {
     try {
       setNextWeekLoading(true);
       const res = await carryForwardToNextWeek(selectedSite.id);
-      showSuccess(isAuto ? "Auto-transition: next week started" : "Next week started");
+      showSuccess(
+        isAuto ? "Auto-transition: next week started" : "Next week started",
+      );
       const updatedSite = { ...selectedSite, currentWeekKey: res.to };
       setSelectedSite(updatedSite);
       await loadTasksBySite(updatedSite);
@@ -393,7 +416,11 @@ function Engineer() {
     const dueToday = tasks.filter((t) => {
       if (t.status !== "PENDING") return false;
       const due = safeToDate(t.expectedCompletionDate);
-      return !!due && due.getTime() >= todayStart.getTime() && due.getTime() < tomorrowStart.getTime();
+      return (
+        !!due &&
+        due.getTime() >= todayStart.getTime() &&
+        due.getTime() < tomorrowStart.getTime()
+      );
     }).length;
     const highPriorityPending = tasks.filter(
       (t) => t.status === "PENDING" && (t.priority || "NORMAL") === "HIGH",
@@ -449,8 +476,10 @@ function Engineer() {
         !!due &&
         due.getTime() >= todayStart.getTime() &&
         due.getTime() < tomorrowStart.getTime();
-      if (snapshotFilter === SNAPSHOT_FILTERS.DUE_TODAY && !isDueToday) return false;
-      if (snapshotFilter === SNAPSHOT_FILTERS.OVERDUE && !isOverdue) return false;
+      if (snapshotFilter === SNAPSHOT_FILTERS.DUE_TODAY && !isDueToday)
+        return false;
+      if (snapshotFilter === SNAPSHOT_FILTERS.OVERDUE && !isOverdue)
+        return false;
       if (
         snapshotFilter === SNAPSHOT_FILTERS.HIGH_PENDING &&
         !(t.status === "PENDING" && (t.priority || "NORMAL") === "HIGH")
@@ -472,7 +501,9 @@ function Engineer() {
 
   const toggleTaskSelection = (taskId) => {
     setSelectedTaskIds((prev) =>
-      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId],
+      prev.includes(taskId)
+        ? prev.filter((id) => id !== taskId)
+        : [...prev, taskId],
     );
   };
 
@@ -520,7 +551,9 @@ function Engineer() {
       );
 
       await batch.commit();
-      setSelectedTaskIds((prev) => prev.filter((id) => !targetIds.includes(id)));
+      setSelectedTaskIds((prev) =>
+        prev.filter((id) => !targetIds.includes(id)),
+      );
       showSuccess(`Marked done: ${targetIds.length}`);
       await loadTasksBySite(selectedSite);
       if (showReports) await loadEngineerTaskReport();
@@ -539,22 +572,37 @@ function Engineer() {
   }, [sites]);
 
   const reportTasks = useMemo(() => {
-    const fromDate = reportDateFrom ? new Date(`${reportDateFrom}T00:00:00`) : null;
+    const fromDate = reportDateFrom
+      ? new Date(`${reportDateFrom}T00:00:00`)
+      : null;
     const toDate = reportDateTo ? new Date(`${reportDateTo}T23:59:59`) : null;
     const q = reportSearch.trim().toLowerCase();
 
     let list = allEngineerTasks.filter((t) => {
-      if (reportStatus !== "ALL" && (t.status || "PENDING") !== reportStatus) return false;
-      if (reportPriority !== "ALL" && (t.priority || "NORMAL") !== reportPriority) return false;
+      if (reportStatus !== "ALL" && (t.status || "PENDING") !== reportStatus)
+        return false;
+      if (
+        reportPriority !== "ALL" &&
+        (t.priority || "NORMAL") !== reportPriority
+      )
+        return false;
       if (reportSiteId !== "ALL" && t.siteId !== reportSiteId) return false;
 
       const due = safeToDate(t.expectedCompletionDate);
-      if (fromDate && (!due || due.getTime() < fromDate.getTime())) return false;
+      if (fromDate && (!due || due.getTime() < fromDate.getTime()))
+        return false;
       if (toDate && (!due || due.getTime() > toDate.getTime())) return false;
 
       if (!q) return true;
       const siteName = t.siteName || siteMap.get(t.siteId)?.name || "";
-      const haystack = [t.title || "", t.status || "", t.priority || "", t.dayName || "", t.weekKey || "", siteName]
+      const haystack = [
+        t.title || "",
+        t.status || "",
+        t.priority || "",
+        t.dayName || "",
+        t.weekKey || "",
+        siteName,
+      ]
         .join(" ")
         .toLowerCase();
 
@@ -598,8 +646,12 @@ function Engineer() {
     const total = reportTasks.length;
     const pending = reportTasks.filter((t) => t.status === "PENDING").length;
     const done = reportTasks.filter((t) => t.status === "DONE").length;
-    const cancelled = reportTasks.filter((t) => t.status === "CANCELLED").length;
-    const high = reportTasks.filter((t) => (t.priority || "NORMAL") === "HIGH").length;
+    const cancelled = reportTasks.filter(
+      (t) => t.status === "CANCELLED",
+    ).length;
+    const high = reportTasks.filter(
+      (t) => (t.priority || "NORMAL") === "HIGH",
+    ).length;
     return { total, pending, done, cancelled, high };
   }, [reportTasks]);
 
@@ -630,11 +682,26 @@ function Engineer() {
       pdf.setFontSize(9);
       pdf.text(`Engineer: ${engineerName}`, 14, 29);
       pdf.text(`Generated: ${new Date().toLocaleString("en-GB")}`, 14, 34);
-      pdf.text(`Filters: Status=${reportStatus}, Priority=${reportPriority}, Sort=${reportSort}`, 14, 39);
+      pdf.text(
+        `Filters: Status=${reportStatus}, Priority=${reportPriority}, Sort=${reportSort}`,
+        14,
+        39,
+      );
 
       autoTable(pdf, {
         startY: 45,
-        head: [["Title", "Site", "Week", "Status", "Priority", "Day", "Due Date", "Updated"]],
+        head: [
+          [
+            "Title",
+            "Site",
+            "Week",
+            "Status",
+            "Priority",
+            "Day",
+            "Due Date",
+            "Updated",
+          ],
+        ],
         body: reportTasks.map((t) => [
           t.title || "-",
           t.siteName || siteMap.get(t.siteId)?.name || "-",
@@ -671,17 +738,27 @@ function Engineer() {
       <div className="admin-dashboard engineer-theme">
         <header className="admin-header-card">
           <div className="header-info">
-            <h1 className="header-title">RP Construction Tracker</h1>
+            <h1 className="header-title">RP Construction</h1>
             <span className="header-badge">Engineer: {engineerName}</span>
           </div>
           <div className="header-actions" style={{ gap: 8 }}>
-            <Button className="btn-muted-action" onClick={() => navigate("/engineer/stages")}>
+            <Button
+              className="btn-muted-action"
+              onClick={() => navigate("/engineer/stages")}
+            >
               Execution Stages
             </Button>
-            <Button className="btn-muted-action" onClick={() => setShowReports((v) => !v)}>
+            <Button
+              className="btn-muted-action"
+              onClick={() => setShowReports((v) => !v)}
+            >
               {showReports ? "Back to Dashboard" : "Engineer Reports"}
             </Button>
-            <Button className="btn-danger-header" loading={loggingOut} onClick={handleLogout}>
+            <Button
+              className="btn-danger-header"
+              loading={loggingOut}
+              onClick={handleLogout}
+            >
               Logout
             </Button>
           </div>
@@ -691,10 +768,18 @@ function Engineer() {
             <div className="engineer-report-header">
               <h2 className="section-heading">Engineer Task Reports</h2>
               <div style={{ display: "flex", gap: 8 }}>
-                <Button className="btn-muted-action" loading={reportLoading} onClick={loadEngineerTaskReport}>
+                <Button
+                  className="btn-muted-action"
+                  loading={reportLoading}
+                  onClick={loadEngineerTaskReport}
+                >
                   Refresh
                 </Button>
-                <Button className="btn-add-task-pro" loading={reportExporting} onClick={exportReportPdf}>
+                <Button
+                  className="btn-add-task-pro"
+                  loading={reportExporting}
+                  onClick={exportReportPdf}
+                >
                   Export PDF
                 </Button>
               </div>
@@ -708,20 +793,32 @@ function Engineer() {
                 onChange={(e) => setReportSearch(e.target.value)}
               />
 
-              <select className="task-select-pro-v2" value={reportStatus} onChange={(e) => setReportStatus(e.target.value)}>
+              <select
+                className="task-select-pro-v2"
+                value={reportStatus}
+                onChange={(e) => setReportStatus(e.target.value)}
+              >
                 <option value="ALL">All Status</option>
                 <option value="PENDING">Pending</option>
                 <option value="DONE">Done</option>
                 <option value="CANCELLED">Cancelled</option>
               </select>
 
-              <select className="task-select-pro-v2" value={reportPriority} onChange={(e) => setReportPriority(e.target.value)}>
+              <select
+                className="task-select-pro-v2"
+                value={reportPriority}
+                onChange={(e) => setReportPriority(e.target.value)}
+              >
                 <option value="ALL">All Priority</option>
                 <option value="HIGH">High</option>
                 <option value="NORMAL">Normal</option>
               </select>
 
-              <select className="task-select-pro-v2" value={reportSiteId} onChange={(e) => setReportSiteId(e.target.value)}>
+              <select
+                className="task-select-pro-v2"
+                value={reportSiteId}
+                onChange={(e) => setReportSiteId(e.target.value)}
+              >
                 <option value="ALL">All Sites</option>
                 {sites.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -730,10 +827,24 @@ function Engineer() {
                 ))}
               </select>
 
-              <input type="date" className="task-input-pro-v2" value={reportDateFrom} onChange={(e) => setReportDateFrom(e.target.value)} />
-              <input type="date" className="task-input-pro-v2" value={reportDateTo} onChange={(e) => setReportDateTo(e.target.value)} />
+              <input
+                type="date"
+                className="task-input-pro-v2"
+                value={reportDateFrom}
+                onChange={(e) => setReportDateFrom(e.target.value)}
+              />
+              <input
+                type="date"
+                className="task-input-pro-v2"
+                value={reportDateTo}
+                onChange={(e) => setReportDateTo(e.target.value)}
+              />
 
-              <select className="task-select-pro-v2" value={reportSort} onChange={(e) => setReportSort(e.target.value)}>
+              <select
+                className="task-select-pro-v2"
+                value={reportSort}
+                onChange={(e) => setReportSort(e.target.value)}
+              >
                 <option value="UPDATED_DESC">Latest Updated</option>
                 <option value="CREATED_DESC">Latest Created</option>
                 <option value="DUE_ASC">Due Date Asc</option>
@@ -746,14 +857,21 @@ function Engineer() {
               <span className="ui-badge">Total: {reportSummary.total}</span>
               <span className="ui-badge">Pending: {reportSummary.pending}</span>
               <span className="ui-badge">Done: {reportSummary.done}</span>
-              <span className="ui-badge">Cancelled: {reportSummary.cancelled}</span>
-              <span className="ui-badge">High Priority: {reportSummary.high}</span>
+              <span className="ui-badge">
+                Cancelled: {reportSummary.cancelled}
+              </span>
+              <span className="ui-badge">
+                High Priority: {reportSummary.high}
+              </span>
             </div>
 
             {reportLoading ? (
               <SkeletonBox />
             ) : reportPageModel.total === 0 ? (
-              <EmptyState title="No tasks found" subtitle="Try clearing filters." />
+              <EmptyState
+                title="No tasks found"
+                subtitle="Try clearing filters."
+              />
             ) : (
               <div>
                 <div className="engineer-report-table-wrap">
@@ -774,8 +892,14 @@ function Engineer() {
                       {reportPageModel.items.map((t) => (
                         <tr key={t.id}>
                           <td>{t.title || "-"}</td>
-                          <td>{t.siteName || siteMap.get(t.siteId)?.name || "-"}</td>
-                          <td>{formatMarathiWeekFromDate(t.expectedCompletionDate)}</td>
+                          <td>
+                            {t.siteName || siteMap.get(t.siteId)?.name || "-"}
+                          </td>
+                          <td>
+                            {formatMarathiWeekFromDate(
+                              t.expectedCompletionDate,
+                            )}
+                          </td>
                           <td>{t.status || "PENDING"}</td>
                           <td>{t.priority || "NORMAL"}</td>
                           <td>{t.dayName || "-"}</td>
@@ -788,7 +912,8 @@ function Engineer() {
                 </div>
                 <div className="engineer-report-pagination">
                   <div className="engineer-report-page-info">
-                    Showing {reportPageModel.start}-{reportPageModel.end} of {reportPageModel.total}
+                    Showing {reportPageModel.start}-{reportPageModel.end} of{" "}
+                    {reportPageModel.total}
                   </div>
                   <div className="engineer-report-page-actions">
                     <button
@@ -808,7 +933,9 @@ function Engineer() {
                           Math.min(reportPageModel.totalPages, p + 1),
                         )
                       }
-                      disabled={reportPageModel.page >= reportPageModel.totalPages}
+                      disabled={
+                        reportPageModel.page >= reportPageModel.totalPages
+                      }
                     >
                       Next
                     </button>
@@ -844,7 +971,10 @@ function Engineer() {
                     </div>
                     <div className="card-footer">
                       <div className="meta-item">
-                        Week: <strong>{formatMarathiWeekFromWeekKey(site.currentWeekKey)}</strong>
+                        Week:{" "}
+                        <strong>
+                          {formatMarathiWeekFromWeekKey(site.currentWeekKey)}
+                        </strong>
                       </div>
                     </div>
                   </div>
@@ -859,295 +989,524 @@ function Engineer() {
             <div className="detail-view">
               {summary.overdue > 0 && (
                 <div className="site-reminder-banner">
-                  You have {summary.overdue} overdue task{summary.overdue > 1 ? "s" : ""}
+                  You have {summary.overdue} overdue task
+                  {summary.overdue > 1 ? "s" : ""}
                 </div>
               )}
               {summary.highPriorityPending > 0 && (
                 <div className="site-priority-banner">
-                  You have high priority pending tasks: {summary.highPriorityPending}
+                  You have high priority pending tasks:{" "}
+                  {summary.highPriorityPending}
                 </div>
               )}
               <div className="sticky-back-header-v5">
-              <button className="btn-back-pro" onClick={() => setSelectedSite(null)}>
-                <span className="back-icon">{"<-"}</span>
-                <div className="back-text">
-                  <span className="back-label">Back to Projects</span>
-                  <span className="back-sub">Dashboard View</span>
-                </div>
-              </button>
-              <div className="engineer-badge-pill">
-                <div className="badge-content-v5">
-                  <span className="eng-label-v5">Active Site</span>
-                  <h2 className="eng-name-v5">{selectedSite.name}</h2>
+                <button
+                  className="btn-back-pro"
+                  onClick={() => setSelectedSite(null)}
+                >
+                  <span className="back-icon">{"<-"}</span>
+                  <div className="back-text">
+                    <span className="back-label">Back to Projects</span>
+                    <span className="back-sub">Dashboard View</span>
+                  </div>
+                </button>
+                <div className="engineer-badge-pill">
+                  <div className="badge-content-v5">
+                    <span className="eng-label-v5">Active Site</span>
+                    <h2 className="eng-name-v5">{selectedSite.name}</h2>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="system-alerts-bar">
-              <div className="alert-content">
-                <span className="pulse-dot"></span>
-                <p>
-                  <strong>Site Health:</strong> Pending: <b>{summary.pending}</b> | Done: <b>{summary.done}</b> | Overdue: <b>{summary.overdue}</b> | Week: <b>{formatMarathiWeekFromWeekKey(selectedSite?.currentWeekKey)}</b>
-                </p>
+              <div className="system-alerts-bar">
+                <div className="alert-content">
+                  <span className="pulse-dot"></span>
+                  <p>
+                    <strong>Site Health:</strong> Pending:{" "}
+                    <b>{summary.pending}</b> | Done: <b>{summary.done}</b> |
+                    Overdue: <b>{summary.overdue}</b> | Week:{" "}
+                    <b>
+                      {formatMarathiWeekFromWeekKey(
+                        selectedSite?.currentWeekKey,
+                      )}
+                    </b>
+                  </p>
+                </div>
+                <div className="alert-btns">
+                  <button
+                    className="btn-muted-action"
+                    onClick={() => loadTasksBySite(selectedSite)}
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
-              <div className="alert-btns">
-                <button className="btn-muted-action" onClick={() => loadTasksBySite(selectedSite)}>
-                  Refresh
+
+              <div className="today-snapshot-grid">
+                <button
+                  className={`today-snapshot-card ${snapshotFilter === SNAPSHOT_FILTERS.DUE_TODAY ? "active" : ""}`}
+                  onClick={() =>
+                    setSnapshotFilter((prev) =>
+                      prev === SNAPSHOT_FILTERS.DUE_TODAY
+                        ? SNAPSHOT_FILTERS.ALL
+                        : SNAPSHOT_FILTERS.DUE_TODAY,
+                    )
+                  }
+                >
+                  <span className="snapshot-label">Tasks Due Today</span>
+                  <span className="snapshot-value">{summary.dueToday}</span>
+                </button>
+                <button
+                  className={`today-snapshot-card danger ${snapshotFilter === SNAPSHOT_FILTERS.OVERDUE ? "active" : ""}`}
+                  onClick={() =>
+                    setSnapshotFilter((prev) =>
+                      prev === SNAPSHOT_FILTERS.OVERDUE
+                        ? SNAPSHOT_FILTERS.ALL
+                        : SNAPSHOT_FILTERS.OVERDUE,
+                    )
+                  }
+                >
+                  <span className="snapshot-label">Overdue Tasks</span>
+                  <span className="snapshot-value">{summary.overdue}</span>
+                </button>
+                <button
+                  className={`today-snapshot-card warning ${snapshotFilter === SNAPSHOT_FILTERS.HIGH_PENDING ? "active" : ""}`}
+                  onClick={() =>
+                    setSnapshotFilter((prev) =>
+                      prev === SNAPSHOT_FILTERS.HIGH_PENDING
+                        ? SNAPSHOT_FILTERS.ALL
+                        : SNAPSHOT_FILTERS.HIGH_PENDING,
+                    )
+                  }
+                >
+                  <span className="snapshot-label">High Priority Pending</span>
+                  <span className="snapshot-value">
+                    {summary.highPriorityPending}
+                  </span>
                 </button>
               </div>
-            </div>
-
-            <div className="today-snapshot-grid">
-              <button
-                className={`today-snapshot-card ${snapshotFilter === SNAPSHOT_FILTERS.DUE_TODAY ? "active" : ""}`}
-                onClick={() =>
-                  setSnapshotFilter((prev) =>
-                    prev === SNAPSHOT_FILTERS.DUE_TODAY ? SNAPSHOT_FILTERS.ALL : SNAPSHOT_FILTERS.DUE_TODAY,
-                  )
-                }
-              >
-                <span className="snapshot-label">Tasks Due Today</span>
-                <span className="snapshot-value">{summary.dueToday}</span>
-              </button>
-              <button
-                className={`today-snapshot-card danger ${snapshotFilter === SNAPSHOT_FILTERS.OVERDUE ? "active" : ""}`}
-                onClick={() =>
-                  setSnapshotFilter((prev) =>
-                    prev === SNAPSHOT_FILTERS.OVERDUE ? SNAPSHOT_FILTERS.ALL : SNAPSHOT_FILTERS.OVERDUE,
-                  )
-                }
-              >
-                <span className="snapshot-label">Overdue Tasks</span>
-                <span className="snapshot-value">{summary.overdue}</span>
-              </button>
-              <button
-                className={`today-snapshot-card warning ${snapshotFilter === SNAPSHOT_FILTERS.HIGH_PENDING ? "active" : ""}`}
-                onClick={() =>
-                  setSnapshotFilter((prev) =>
-                    prev === SNAPSHOT_FILTERS.HIGH_PENDING ? SNAPSHOT_FILTERS.ALL : SNAPSHOT_FILTERS.HIGH_PENDING,
-                  )
-                }
-              >
-                <span className="snapshot-label">High Priority Pending</span>
-                <span className="snapshot-value">{summary.highPriorityPending}</span>
-              </button>
-            </div>
               <div className="detail-grid">
-              <aside className="detail-config">
-                <div className="config-card-pro summary-card-v3">
-                  <div className="card-header-v3"><h3 className="card-heading-v3">Visual Progress</h3></div>
-                  <div className="summary-body-v3">
-                    {summary.total > 0 ? (
-                      <>
-                        <div className="visual-meter-v3">
-                          <div className="meter-segment segment-done" style={{ width: `${(summary.done / summary.total) * 100}%` }}></div>
-                          <div className="meter-segment segment-pending" style={{ width: `${(summary.pending / summary.total) * 100}%` }}></div>
-                          <div className="meter-segment segment-overdue" style={{ width: `${(summary.overdue / summary.total) * 100}%` }}></div>
-                        </div>
-                        <div className="meter-legend">
-                          <span className="legend-item"><span className="legend-dot done"></span>Done</span>
-                          <span className="legend-item"><span className="legend-dot pending"></span>Pending</span>
-                          <span className="legend-item"><span className="legend-dot overdue"></span>Overdue</span>
-                        </div>
-                        <div className="stats-list-v3">
-                          <div className="stat-item-v3"><span className="stat-label">Done</span><span className="stat-value">{summary.done}</span></div>
-                          <div className="stat-item-v3"><span className="stat-label">Pending</span><span className="stat-value">{summary.pending}</span></div>
-                          <div className="stat-item-v3"><span className="stat-label">Overdue</span><span className="stat-value">{summary.overdue}</span></div>
-                        </div>
-                        <div className="completion-v3">
-                          <span className="completion-pct">{summary.completionPct}%</span>
-                          <span className="completion-label">Progress</span>
-                        </div>
-                      </>
-                    ) : <EmptyState title="No tasks" />}
-                  </div>
-                </div>
-
-                <div className="config-card-pro summary-card-v3" style={{ marginTop: "10px" }}>
-                  <div className="card-header-v3"><h3 className="card-heading-v3">This Week Performance</h3></div>
-                  <div className="summary-body-v3">
-                    <div className="stats-list-v3">
-                      <div className="stat-item-v3"><span className="stat-label">Completion</span><span className="stat-value">{performanceThisWeek.completionPct}%</span></div>
-                      <div className="stat-item-v3"><span className="stat-label">Completed</span><span className="stat-value">{performanceThisWeek.completed}</span></div>
-                      <div className="stat-item-v3"><span className="stat-label">Overdue</span><span className="stat-value">{performanceThisWeek.overdue}</span></div>
-                      <div className="stat-item-v3"><span className="stat-label">High Pending</span><span className="stat-value">{performanceThisWeek.highPriorityPending}</span></div>
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  className="btn-add-task-pro"
-                  style={{ width: "100%", marginTop: "10px" }}
-                  loading={nextWeekLoading}
-                  disabled={summary.pending === 0}
-                  onClick={() => onNextWeek(false)}
-                >
-                  Start Next Week
-                </Button>
-              </aside>
-
-              <main className="detail-main">
-                <section className="task-creation-panel">
-                  <div className="panel-header-pro"><h3 className="panel-title-pro">Create Site Task</h3></div>
-                  <div className="task-form-grid">
-                    <div className="form-item-pro title-span">
-                      <label className="input-label-pro">Description</label>
-                      <input className="task-input-pro-v2" value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="e.g. Slab Reinforcement" />
-                    </div>
-                    <div className="form-item-pro">
-                      <label className="input-label-pro">Day</label>
-                      <select className="task-select-pro-v2" value={newTaskDayName} onChange={(e) => setNewTaskDayName(e.target.value)}>
-                        <option value="">Any Day</option>
-                        {DAY_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                    </div>
-                    <div className="form-item-pro">
-                      <label className="input-label-pro">Due Date</label>
-                      <input type="date" className="task-input-pro-v2" value={expectedCompletionDate} min={new Date().toISOString().split("T")[0]} onChange={(e) => setExpectedCompletionDate(e.target.value)} />
-                    </div>
-                    <div className="form-item-pro">
-                      <label className="input-label-pro">Priority</label>
-                      <div className="priority-segmented-control">
-                        <button type="button" className={`segment-btn ${newTaskPriority === "NORMAL" ? "active" : ""}`} onClick={() => setNewTaskPriority("NORMAL")}>Normal</button>
-                        <button type="button" className={`segment-btn high ${newTaskPriority === "HIGH" ? "active" : ""}`} onClick={() => setNewTaskPriority("HIGH")}>High</button>
-                      </div>
-                    </div>
-                    <div className="form-item-pro action-span">
-                      <label className="input-label-pro">&nbsp;</label>
-                      <Button className="btn-add-task-pro" loading={addingTask} onClick={addTask}>+ Add Task</Button>
-                    </div>
-                  </div>
-                </section>
-
-                <div className="task-manager-card">
-                  <div className="task-controls-sticky">
-                    <div className="tab-group-v2">
-                      {["ALL", "PENDING", "DONE", "CANCELLED"].map((val) => (
-                        <button key={val} className={`tab-btn-v2 ${taskFilter === val ? "active" : ""}`} onClick={() => setTaskFilter(val)}>
-                          {val} <span className="tab-count">{val === "ALL" ? summary.total : val === "PENDING" ? summary.pending : val === "DONE" ? summary.done : summary.cancelled}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="site-task-toolbar">
-                      <input
-                        className="task-input-pro-v2"
-                        placeholder="Search title / day / week"
-                        value={siteTaskSearch}
-                        onChange={(e) => setSiteTaskSearch(e.target.value)}
-                      />
-                      <label className="task-select-all">
-                        <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAllVisible} />
-                        Select All
-                      </label>
-                      <Button
-                        className="btn-add-task-pro"
-                        loading={bulkUpdating}
-                        onClick={bulkMarkDone}
-                        disabled={selectedTaskIds.length === 0}
-                      >
-                        Bulk Mark Done
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="task-list-v2">
-                    {tasksLoading ? <SkeletonBox /> : visibleTasks.map((task) => {
-                        const pendingDays = getPendingSinceDays(task);
-                        const dueDate = safeToDate(task.expectedCompletionDate);
-                        const createdAt = safeToDate(task.createdAt);
-                        const todayStart = startOfDay(new Date());
-                        const tomorrowStart = new Date(todayStart);
-                        tomorrowStart.setDate(todayStart.getDate() + 1);
-                        const isOverdue =
-                          task.status === "PENDING" &&
-                          !!dueDate &&
-                          dueDate.getTime() < todayStart.getTime();
-                        const isHighPending =
-                          task.status === "PENDING" && (task.priority || "NORMAL") === "HIGH";
-                        const isNewToday =
-                          !!createdAt &&
-                          createdAt.getTime() >= todayStart.getTime() &&
-                          createdAt.getTime() < tomorrowStart.getTime();
-                        const agingSeverity = getTaskAgingSeverity(task);
-                        const statusBadgeTone =
-                          task.status === "DONE"
-                            ? "done"
-                            : task.status === "CANCELLED"
-                              ? "cancelled"
-                              : isOverdue
-                                ? "overdue"
-                                : "pending";
-                        const statusAgeClass =
-                          task.status === "PENDING" && !isOverdue ? agingSeverity || "" : "";
-                        const highlightClass =
-                          task.status === "DONE"
-                            ? "task-highlight-done"
-                            : isOverdue
-                              ? "task-highlight-overdue"
-                              : isHighPending
-                                ? "task-highlight-high"
-                                : isNewToday
-                                  ? "task-highlight-new"
-                                  : "";
-                        return (
-                          <div
-                            key={task.id}
-                            className={`task-card-v2 ${task.status === "DONE" ? "is-completed" : ""} ${highlightClass}`}
-                          >
-                            <div className={`task-priority-indicator ${task.priority === "HIGH" ? "high-priority" : "normal-priority"}`}></div>
-                            <div className="task-content-main">
-                              <div className="task-title-row">
-                                <div className="task-checkbox-title">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedTaskIds.includes(task.id)}
-                                    onChange={() => toggleTaskSelection(task.id)}
-                                  />
-                                  <h5 className="task-title-v2">{task.title}</h5>
+                <aside className="detail-config">
+                  {/* Keep analytics content same; only grouped into collapsible section for compact UX. */}
+                  <section className="engineer-analytics-card">
+                    <button
+                      className="engineer-analytics-toggle"
+                      onClick={() => setAnalyticsOpen((prev) => !prev)}
+                    >
+                      <span>Project Analytics</span>
+                      <b>{analyticsOpen ? "−" : "+"}</b>
+                    </button>
+                    {analyticsOpen && (
+                      <div className="engineer-analytics-body">
+                        <div className="config-card-pro summary-card-v3">
+                          <div className="card-header-v3">
+                            <h3 className="card-heading-v3">Visual Progress</h3>
+                          </div>
+                          <div className="summary-body-v3">
+                            {summary.total > 0 ? (
+                              <>
+                                <div className="visual-meter-v3">
+                                  <div
+                                    className="meter-segment segment-done"
+                                    style={{
+                                      width: `${(summary.done / summary.total) * 100}%`,
+                                    }}
+                                  ></div>
+                                  <div
+                                    className="meter-segment segment-pending"
+                                    style={{
+                                      width: `${(summary.pending / summary.total) * 100}%`,
+                                    }}
+                                  ></div>
+                                  <div
+                                    className="meter-segment segment-overdue"
+                                    style={{
+                                      width: `${(summary.overdue / summary.total) * 100}%`,
+                                    }}
+                                  ></div>
                                 </div>
-                                <span className={`task-status-badge ${statusBadgeTone} ${statusAgeClass}`}>
-                                  {getTaskStatusBadge(task, pendingDays, isOverdue)}
+                                <div className="meter-legend">
+                                  <span className="legend-item">
+                                    <span className="legend-dot done"></span>Done
+                                  </span>
+                                  <span className="legend-item">
+                                    <span className="legend-dot pending"></span>
+                                    Pending
+                                  </span>
+                                  <span className="legend-item">
+                                    <span className="legend-dot overdue"></span>
+                                    Overdue
+                                  </span>
+                                </div>
+                                <div className="stats-list-v3">
+                                  <div className="stat-item-v3">
+                                    <span className="stat-label">Done</span>
+                                    <span className="stat-value">{summary.done}</span>
+                                  </div>
+                                  <div className="stat-item-v3">
+                                    <span className="stat-label">Pending</span>
+                                    <span className="stat-value">
+                                      {summary.pending}
+                                    </span>
+                                  </div>
+                                  <div className="stat-item-v3">
+                                    <span className="stat-label">Overdue</span>
+                                    <span className="stat-value">
+                                      {summary.overdue}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="completion-v3">
+                                  <span className="completion-pct">
+                                    {summary.completionPct}%
+                                  </span>
+                                  <span className="completion-label">Progress</span>
+                                </div>
+                              </>
+                            ) : (
+                              <EmptyState title="No tasks" />
+                            )}
+                          </div>
+                        </div>
+
+                        <div
+                          className="config-card-pro summary-card-v3"
+                          style={{ marginTop: "10px" }}
+                        >
+                          <div className="card-header-v3">
+                            <h3 className="card-heading-v3">This Week Performance</h3>
+                          </div>
+                          <div className="summary-body-v3">
+                            <div className="stats-list-v3">
+                              <div className="stat-item-v3">
+                                <span className="stat-label">Completion</span>
+                                <span className="stat-value">
+                                  {performanceThisWeek.completionPct}%
                                 </span>
                               </div>
-                              <div className="task-meta-row">
-                                <span className="task-meta-item">
-                                  <span className="task-meta-label">DUE:</span>
-                                  <span className="task-meta-value">{fmtDate(task.expectedCompletionDate)}</span>
-                                </span>
-                                <span className="task-meta-item">
-                                  <span className="task-meta-label">WEEK:</span>
-                                  <span className="task-meta-value">{formatMarathiWeekFromDate(task.expectedCompletionDate)}</span>
-                                </span>
-                                <span className="task-meta-item">
-                                  <span className="task-meta-label">DAY:</span>
-                                  <span className="task-meta-value">{task.dayName || "Any"}</span>
+                              <div className="stat-item-v3">
+                                <span className="stat-label">Completed</span>
+                                <span className="stat-value">
+                                  {performanceThisWeek.completed}
                                 </span>
                               </div>
-                              <button className="timeline-toggle-btn" onClick={() => toggleTimeline(task.id)}>
-                                {expandedTimeline[task.id] ? "Hide Activity" : "Show Activity"}
-                              </button>
-                              {expandedTimeline[task.id] && (
-                                <div className="task-timeline">
-                                  <div><span>Created:</span> <b>{fmtDateTime(task.createdAt)}</b></div>
-                                  <div><span>Updated:</span> <b>{fmtDateTime(task.updatedAt)}</b></div>
-                                  <div><span>Status Updated:</span> <b>{fmtDateTime(task.statusUpdatedAt)}</b></div>
-                                </div>
-                              )}
-                            </div>
-                            <div className="task-mobile-divider"></div>
-                            <div className="task-actions-refined">
-                              {task.status !== "DONE" ? (
-                                <button className="btn-pro-action btn-done" disabled={updatingTaskId === task.id} onClick={() => updateTaskStatus(task.id, "DONE")}>Done</button>
-                              ) : (
-                                <button className="btn-pro-action btn-reopen" disabled={updatingTaskId === task.id} onClick={() => updateTaskStatus(task.id, "PENDING")}>Reopen</button>
-                              )}
+                              <div className="stat-item-v3">
+                                <span className="stat-label">Overdue</span>
+                                <span className="stat-value">
+                                  {performanceThisWeek.overdue}
+                                </span>
+                              </div>
+                              <div className="stat-item-v3">
+                                <span className="stat-label">High Pending</span>
+                                <span className="stat-value">
+                                  {performanceThisWeek.highPriorityPending}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        );
-                    })}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  <Button
+                    className="btn-add-task-pro"
+                    style={{ width: "100%", marginTop: "10px" }}
+                    loading={nextWeekLoading}
+                    disabled={summary.pending === 0}
+                    onClick={() => onNextWeek(false)}
+                  >
+                    Start Next Week
+                  </Button>
+                </aside>
+
+                <main className="detail-main">
+                  <section className="task-creation-panel">
+                    <div className="panel-header-pro">
+                      <h3 className="panel-title-pro">Create Site Task</h3>
+                    </div>
+                    <div className="task-form-grid">
+                      <div className="form-item-pro title-span">
+                        <label className="input-label-pro">Description</label>
+                        <input
+                          className="task-input-pro-v2"
+                          value={newTaskTitle}
+                          onChange={(e) => setNewTaskTitle(e.target.value)}
+                          placeholder="e.g. Slab Reinforcement"
+                        />
+                      </div>
+                      <div className="form-item-pro">
+                        <label className="input-label-pro">Day</label>
+                        <select
+                          className="task-select-pro-v2"
+                          value={newTaskDayName}
+                          onChange={(e) => setNewTaskDayName(e.target.value)}
+                        >
+                          <option value="">Any Day</option>
+                          {DAY_OPTIONS.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-item-pro">
+                        <label className="input-label-pro">Due Date</label>
+                        <input
+                          type="date"
+                          className="task-input-pro-v2"
+                          value={expectedCompletionDate}
+                          min={new Date().toISOString().split("T")[0]}
+                          onChange={(e) =>
+                            setExpectedCompletionDate(e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="form-item-pro">
+                        <label className="input-label-pro">Priority</label>
+                        <div className="priority-segmented-control">
+                          <button
+                            type="button"
+                            className={`segment-btn ${newTaskPriority === "NORMAL" ? "active" : ""}`}
+                            onClick={() => setNewTaskPriority("NORMAL")}
+                          >
+                            Normal
+                          </button>
+                          <button
+                            type="button"
+                            className={`segment-btn high ${newTaskPriority === "HIGH" ? "active" : ""}`}
+                            onClick={() => setNewTaskPriority("HIGH")}
+                          >
+                            High
+                          </button>
+                        </div>
+                      </div>
+                      <div className="form-item-pro action-span">
+                        <label className="input-label-pro">&nbsp;</label>
+                        <Button
+                          className="btn-add-task-pro"
+                          loading={addingTask}
+                          onClick={addTask}
+                        >
+                          + Add Task
+                        </Button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="task-manager-card">
+                    <div className="task-controls-sticky">
+                      <div className="tab-group-v2">
+                        {["ALL", "PENDING", "DONE", "CANCELLED"].map((val) => (
+                          <button
+                            key={val}
+                            className={`tab-btn-v2 ${taskFilter === val ? "active" : ""}`}
+                            onClick={() => setTaskFilter(val)}
+                          >
+                            {val}{" "}
+                            <span className="tab-count">
+                              {val === "ALL"
+                                ? summary.total
+                                : val === "PENDING"
+                                  ? summary.pending
+                                  : val === "DONE"
+                                    ? summary.done
+                                    : summary.cancelled}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="site-task-toolbar">
+                        <input
+                          className="task-input-pro-v2"
+                          placeholder="Search title / day / week"
+                          value={siteTaskSearch}
+                          onChange={(e) => setSiteTaskSearch(e.target.value)}
+                        />
+                        <label className="task-select-all">
+                          <input
+                            type="checkbox"
+                            checked={allVisibleSelected}
+                            onChange={toggleSelectAllVisible}
+                          />
+                          Select All
+                        </label>
+                        <Button
+                          className="btn-add-task-pro"
+                          loading={bulkUpdating}
+                          onClick={bulkMarkDone}
+                          disabled={selectedTaskIds.length === 0}
+                        >
+                          Bulk Mark Done
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="task-list-v2">
+                      {tasksLoading ? (
+                        <SkeletonBox />
+                      ) : (
+                        visibleTasks.map((task) => {
+                          const pendingDays = getPendingSinceDays(task);
+                          const dueDate = safeToDate(
+                            task.expectedCompletionDate,
+                          );
+                          const createdAt = safeToDate(task.createdAt);
+                          const todayStart = startOfDay(new Date());
+                          const tomorrowStart = new Date(todayStart);
+                          tomorrowStart.setDate(todayStart.getDate() + 1);
+                          const isOverdue =
+                            task.status === "PENDING" &&
+                            !!dueDate &&
+                            dueDate.getTime() < todayStart.getTime();
+                          const isHighPending =
+                            task.status === "PENDING" &&
+                            (task.priority || "NORMAL") === "HIGH";
+                          const isNewToday =
+                            !!createdAt &&
+                            createdAt.getTime() >= todayStart.getTime() &&
+                            createdAt.getTime() < tomorrowStart.getTime();
+                          const agingSeverity = getTaskAgingSeverity(task);
+                          const statusBadgeTone =
+                            task.status === "DONE"
+                              ? "done"
+                              : task.status === "CANCELLED"
+                                ? "cancelled"
+                                : isOverdue
+                                  ? "overdue"
+                                  : "pending";
+                          const statusAgeClass =
+                            task.status === "PENDING" && !isOverdue
+                              ? agingSeverity || ""
+                              : "";
+                          const highlightClass =
+                            task.status === "DONE"
+                              ? "task-highlight-done"
+                              : isOverdue
+                                ? "task-highlight-overdue"
+                                : isHighPending
+                                  ? "task-highlight-high"
+                                  : isNewToday
+                                    ? "task-highlight-new"
+                                    : "";
+                          return (
+                            <div
+                              key={task.id}
+                              className={`task-card-v2 ${task.status === "DONE" ? "is-completed" : ""} ${highlightClass}`}
+                            >
+                              <div
+                                className={`task-priority-indicator ${task.priority === "HIGH" ? "high-priority" : "normal-priority"}`}
+                              ></div>
+                              <div className="task-content-main">
+                                <div className="task-title-row">
+                                  <div className="task-checkbox-title">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedTaskIds.includes(
+                                        task.id,
+                                      )}
+                                      onChange={() =>
+                                        toggleTaskSelection(task.id)
+                                      }
+                                    />
+                                    <h5 className="task-title-v2">
+                                      {task.title}
+                                    </h5>
+                                  </div>
+                                  <span
+                                    className={`task-status-badge ${statusBadgeTone} ${statusAgeClass}`}
+                                  >
+                                    {getTaskStatusBadge(
+                                      task,
+                                      pendingDays,
+                                      isOverdue,
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="task-meta-row">
+                                  <span className="task-meta-item">
+                                    <span className="task-meta-label">
+                                      DUE:
+                                    </span>
+                                    <span className="task-meta-value">
+                                      {fmtDate(task.expectedCompletionDate)}
+                                    </span>
+                                  </span>
+                                  <span className="task-meta-item">
+                                    <span className="task-meta-label">
+                                      WEEK:
+                                    </span>
+                                    <span className="task-meta-value">
+                                      {formatMarathiWeekFromDate(
+                                        task.expectedCompletionDate,
+                                      )}
+                                    </span>
+                                  </span>
+                                  <span className="task-meta-item">
+                                    <span className="task-meta-label">
+                                      DAY:
+                                    </span>
+                                    <span className="task-meta-value">
+                                      {task.dayName || "Any"}
+                                    </span>
+                                  </span>
+                                </div>
+                                <button
+                                  className="timeline-toggle-btn"
+                                  onClick={() => toggleTimeline(task.id)}
+                                >
+                                  {expandedTimeline[task.id]
+                                    ? "Hide Activity"
+                                    : "Show Activity"}
+                                </button>
+                                {expandedTimeline[task.id] && (
+                                  <div className="task-timeline">
+                                    <div>
+                                      <span>Created:</span>{" "}
+                                      <b>{fmtDateTime(task.createdAt)}</b>
+                                    </div>
+                                    <div>
+                                      <span>Updated:</span>{" "}
+                                      <b>{fmtDateTime(task.updatedAt)}</b>
+                                    </div>
+                                    <div>
+                                      <span>Status Updated:</span>{" "}
+                                      <b>{fmtDateTime(task.statusUpdatedAt)}</b>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="task-mobile-divider"></div>
+                              <div className="task-actions-refined">
+                                {task.status !== "DONE" ? (
+                                  <button
+                                    className="btn-pro-action btn-done"
+                                    disabled={updatingTaskId === task.id}
+                                    onClick={() =>
+                                      updateTaskStatus(task.id, "DONE")
+                                    }
+                                  >
+                                    Done
+                                  </button>
+                                ) : (
+                                  <button
+                                    className="btn-pro-action btn-reopen"
+                                    disabled={updatingTaskId === task.id}
+                                    onClick={() =>
+                                      updateTaskStatus(task.id, "PENDING")
+                                    }
+                                  >
+                                    Reopen
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
-                </div>
-              </main>
+                </main>
               </div>
             </div>
             {showWeekCloseModal && (
@@ -1155,12 +1514,30 @@ function Engineer() {
                 <div className="week-close-modal">
                   <h3>Week Closing Summary</h3>
                   <div className="week-close-grid">
-                    <div><span>Total Tasks</span><b>{summary.total}</b></div>
-                    <div><span>Done</span><b>{summary.done}</b></div>
-                    <div><span>Pending</span><b>{summary.pending}</b></div>
-                    <div><span>Overdue</span><b>{summary.overdue}</b></div>
-                    <div><span>Completion</span><b>{summary.completionPct}%</b></div>
-                    <div><span>Carry Forward</span><b>{summary.pending}</b></div>
+                    <div>
+                      <span>Total Tasks</span>
+                      <b>{summary.total}</b>
+                    </div>
+                    <div>
+                      <span>Done</span>
+                      <b>{summary.done}</b>
+                    </div>
+                    <div>
+                      <span>Pending</span>
+                      <b>{summary.pending}</b>
+                    </div>
+                    <div>
+                      <span>Overdue</span>
+                      <b>{summary.overdue}</b>
+                    </div>
+                    <div>
+                      <span>Completion</span>
+                      <b>{summary.completionPct}%</b>
+                    </div>
+                    <div>
+                      <span>Carry Forward</span>
+                      <b>{summary.pending}</b>
+                    </div>
                   </div>
                   <div className="week-close-actions">
                     <button
