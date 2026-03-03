@@ -12,6 +12,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import Layout from "../components/Layout";
+import SiteContactsModal from "../components/SiteContactsModal";
 import { db } from "../firebase/firebaseConfig";
 import { useAuth } from "../context/AuthContext";
 import { showError } from "../utils/showError";
@@ -41,8 +42,9 @@ function asNumber(v, fallback = 0) {
 export default function AdminStageSetup() {
   const navigate = useNavigate();
   const { siteId } = useParams();
-  const { role, userDoc } = useAuth();
+  const { role, userDoc, user } = useAuth();
   const adminName = userDoc?.name || "ADMIN";
+  const adminUid = user?.uid || "";
 
   const [sites, setSites] = useState([]);
   const [engineers, setEngineers] = useState([]);
@@ -50,6 +52,7 @@ export default function AdminStageSetup() {
   const [stages, setStages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStageId, setSelectedStageId] = useState("");
+  const [showContacts, setShowContacts] = useState(false);
   const [customStage, setCustomStage] = useState({
     phaseName: "Custom Phase",
     stageName: "",
@@ -332,6 +335,11 @@ export default function AdminStageSetup() {
             <button className="stage-btn" onClick={() => navigate("/admin")}>
               Back to Admin
             </button>
+            {selectedSite && (
+              <button className="stage-btn" onClick={() => setShowContacts(true)}>
+                Site Contacts
+              </button>
+            )}
             {selectedSite && (
               <button className="stage-btn primary" onClick={() => refreshStages(selectedSite)}>
                 Refresh Stages
@@ -655,6 +663,15 @@ export default function AdminStageSetup() {
           <section className="stage-card">Select a site to configure stages.</section>
         )}
       </div>
+      <SiteContactsModal
+        isOpen={showContacts}
+        onClose={() => setShowContacts(false)}
+        siteId={selectedSite?.id || ""}
+        siteName={selectedSite?.name || ""}
+        canManage={true}
+        actorUid={adminUid}
+        actorName={adminName}
+      />
     </Layout>
   );
 }

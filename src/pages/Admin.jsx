@@ -33,6 +33,11 @@ import {
 } from "../utils/marathiWeekFormat";
 import { exportSiteWeeklyReportPdf } from "../utils/exportSiteWeeklyReportPdf";
 import { initializeDefaultStagesForSite } from "../utils/stageWorkflow";
+import {
+  getLatestPendingReason,
+  getPendingHistory,
+  isPendingReasonComplianceRequired,
+} from "../utils/pendingReason";
 
 function Admin() {
   const navigate = useNavigate();
@@ -72,6 +77,7 @@ function Admin() {
   const [downloadingWeeklyReport, setDownloadingWeeklyReport] = useState(false);
   const [reassignEngineerUid, setReassignEngineerUid] = useState("");
   const [reassigning, setReassigning] = useState(false);
+  const [expandedPendingHistory, setExpandedPendingHistory] = useState({});
 
   const [siteSearch, setSiteSearch] = useState("");
 
@@ -312,8 +318,12 @@ function Admin() {
   const getBadges = (task) => {
     const badges = [];
     const pendingDays = getPendingDays(task);
+    const needsCompliance = isPendingReasonComplianceRequired(task, pendingDays);
     if (task.status === "PENDING" && pendingDays !== null && pendingDays >= 3) {
       badges.push({ type: "OVERDUE", text: `🔥 Overdue ${pendingDays}d` });
+    }
+    if (needsCompliance) {
+      badges.push({ type: "COMPLIANCE", text: "Pending reason required (3+ days)" });
     }
     const pw = task?.pendingWeeks || 0;
     if (pw >= 1) badges.push({ type: "CARRY", text: `↪ Carried ${pw} week${pw > 1 ? "s" : ""}` });
@@ -478,6 +488,10 @@ function Admin() {
     { value: "CANCELLED", label: "Cancelled" },
   ];
 
+  const togglePendingHistory = (taskId) => {
+    setExpandedPendingHistory((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
+  };
+
   return (
     <Layout>
       <div className="admin-dashboard">
@@ -504,6 +518,16 @@ function Admin() {
             )}
             <Button className="btn-secondary-header" onClick={() => navigate("/admin/estimates")}>
               Project Estimate
+            </Button>
+            <Button
+              className="btn-secondary-header"
+              onClick={() =>
+                navigate("/contacts", {
+                  state: { siteId: selectedSite?.id || "" },
+                })
+              }
+            >
+              Contact Details
             </Button>
             <Button className="btn-secondary-header" onClick={() => navigate("/admin/stages")}>
               Stage Setup
@@ -905,9 +929,16 @@ function Admin() {
                         const badges = getBadges(task);
                         const overdue = isOverdueByDate(task);
                         const isDone = task.status === "DONE";
+                        const pendingDays = getPendingDays(task);
+                        const needsCompliance = isPendingReasonComplianceRequired(task, pendingDays);
+                        const latestPendingReason = getLatestPendingReason(task);
+                        const pendingHistory = getPendingHistory(task);
 
                         return (
-                          <div key={task.id} className={`task-card-v2 ${overdue ? "is-overdue" : ""} ${isDone ? "is-completed" : ""}`}>
+                          <div
+                            key={task.id}
+                            className={`task-card-v2 ${overdue ? "is-overdue" : ""} ${isDone ? "is-completed" : ""} ${needsCompliance ? "is-compliance-required" : ""}`}
+                          >
                             <div className={`task-priority-indicator ${task.priority === 'HIGH' ? 'high-priority' : 'normal-priority'}`}></div>
 
                             <div className="task-content-main">
@@ -938,6 +969,49 @@ function Admin() {
                                   </div>
                                 )}
                               </div>
+                              {task.status === "PENDING" && (
+                                <div className="admin-pending-reason-wrap">
+                                  <div className="admin-pending-reason-line">
+                                    <span className="info-label">LATEST PENDING REASON</span>
+                                    <span className="info-value-bold">
+                                      {latestPendingReason?.reasonType || "—"}
+                                    </span>
+                                  </div>
+                                  <div className="admin-pending-reason-note">
+                                    {latestPendingReason?.note || "No reason logged yet."}
+                                  </div>
+                                  <button
+                                    className="btn-muted-action admin-pending-history-btn"
+                                    onClick={() => togglePendingHistory(task.id)}
+                                  >
+                                    {expandedPendingHistory[task.id]
+                                      ? "Hide Reason History"
+                                      : `View Reason History (${pendingHistory.length})`}
+                                  </button>
+                                  {expandedPendingHistory[task.id] && (
+                                    <div className="admin-pending-history-box">
+                                      {pendingHistory.length === 0 ? (
+                                        <div>No pending reason history yet.</div>
+                                      ) : (
+                                        pendingHistory
+                                          .slice()
+                                          .sort((a, b) => {
+                                            const aTs = a?.loggedAt?.toDate?.()?.getTime?.() || 0;
+                                            const bTs = b?.loggedAt?.toDate?.()?.getTime?.() || 0;
+                                            return bTs - aTs;
+                                          })
+                                          .map((entry, idx) => (
+                                            <div key={`${task.id}-admin-pending-history-${idx}`}>
+                                              {entry?.reasonType || "-"} | {entry?.note || "-"} |{" "}
+                                              {entry?.loggedByName || "-"} |{" "}
+                                              {entry?.loggedAt?.toDate?.()?.toLocaleString?.("en-GB") || "-"}
+                                            </div>
+                                          ))
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
                             <div className="task-actions-refined">

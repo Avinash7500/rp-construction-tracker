@@ -729,6 +729,12 @@
   color: #0f172a;
 }
 
+.btn-reason {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
 .timeline-toggle-btn {
   margin-top: 10px;
   border: 1px solid #e2e8f0;
@@ -851,6 +857,56 @@
   display: none;
 }
 
+.pending-compliance-alert {
+  margin-top: 10px;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.pending-compliance-badge {
+  display: inline-block;
+  background: #b91c1c;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+}
+
+.pending-compliance-text {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #991b1b;
+  font-weight: 700;
+}
+
+.pending-reason-summary {
+  margin-top: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  background: #f8fafc;
+}
+
+.pending-reason-summary-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.pending-reason-summary-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.pending-reason-summary-actions {
+  margin-top: 8px;
+}
+
 /* Done - Light Green */
 .task-highlight-done {
   background: #f0fdf4;
@@ -868,6 +924,12 @@
 .task-highlight-overdue {
   background: #fef2f2;
   border-color: #fecaca;
+}
+
+.task-highlight-compliance {
+  background: #fff1f2;
+  border-color: #fda4af;
+  box-shadow: 0 0 0 1px #fecdd3 inset;
 }
 
 /* New Task - Light Blue */
@@ -898,6 +960,26 @@
 .week-close-modal h3 {
   margin: 0 0 10px 0;
   color: #0f172a;
+}
+
+.pending-block-text {
+  margin: 0;
+  color: #991b1b;
+  font-weight: 700;
+}
+
+.pending-reason-modal {
+  width: min(620px, 100%);
+}
+
+.pending-reason-form {
+  display: grid;
+  gap: 8px;
+}
+
+.pending-reason-textarea {
+  min-height: 110px;
+  resize: vertical;
 }
 
 .week-close-grid {

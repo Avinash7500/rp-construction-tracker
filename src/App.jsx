@@ -14,6 +14,7 @@ import AdminMaster from "./pages/AdminMaster";
 import ProjectEstimate from "./pages/ProjectEstimate";
 import AdminStageSetup from "./pages/AdminStageSetup";
 import EngineerExecutionStages from "./pages/EngineerExecutionStages";
+import ContactDetails from "./pages/ContactDetails";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // ✅ Accountant MIS Module Imports
@@ -220,6 +221,15 @@ export default function App() {
         element={
           <ProtectedRoute role="ENGINEER">
             <EngineerExecutionStages />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/contacts"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "ENGINEER", "ACCOUNTANT"]}>
+            <ContactDetails />
           </ProtectedRoute>
         }
       />

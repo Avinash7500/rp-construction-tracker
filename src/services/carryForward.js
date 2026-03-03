@@ -67,6 +67,12 @@ export async function carryForwardToNextWeek(siteId) {
       weekKey: nextWeekKey,
 
       carriedFromTaskId: t.id, // optional but useful
+      ...(Array.isArray(task.pendingHistory)
+        ? { pendingHistory: task.pendingHistory }
+        : {}),
+      ...(task.lastPendingReasonAt
+        ? { lastPendingReasonAt: task.lastPendingReasonAt }
+        : {}),
       statusUpdatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),

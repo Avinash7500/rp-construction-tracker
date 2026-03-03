@@ -11,6 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import Layout from "../components/Layout";
+import SiteContactsModal from "../components/SiteContactsModal";
 import { db } from "../firebase/firebaseConfig";
 import { useAuth } from "../context/AuthContext";
 import { showError } from "../utils/showError";
@@ -61,6 +62,7 @@ export default function EngineerExecutionStages() {
   const [delayReason, setDelayReason] = useState(DELAY_REASONS[0]);
   const [delayExplanation, setDelayExplanation] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
 
   const selectedSite = useMemo(
     () => sites.find((s) => s.id === selectedSiteId) || null,
@@ -305,6 +307,11 @@ export default function EngineerExecutionStages() {
               Back to Engineer
             </button>
             {selectedSite && (
+              <button className="stage-btn" onClick={() => setShowContacts(true)}>
+                Site Contacts
+              </button>
+            )}
+            {selectedSite && (
               <button className="stage-btn primary" onClick={() => refreshStages(selectedSite)}>
                 Refresh Timeline
               </button>
@@ -543,6 +550,15 @@ export default function EngineerExecutionStages() {
           </>
         )}
       </div>
+      <SiteContactsModal
+        isOpen={showContacts}
+        onClose={() => setShowContacts(false)}
+        siteId={selectedSite?.id || ""}
+        siteName={selectedSite?.name || ""}
+        canManage={true}
+        actorUid={engineerId}
+        actorName={engineerName}
+      />
     </Layout>
   );
 }

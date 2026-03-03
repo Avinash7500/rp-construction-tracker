@@ -10,6 +10,7 @@ import { showError } from "../utils/showError";
 import { showSuccess } from "../utils/showSuccess";
 import SkeletonBox from "../components/SkeletonBox";
 import EmptyState from "../components/EmptyState";
+import SiteContactsModal from "../components/SiteContactsModal";
 import { useAuth } from "../context/AuthContext";
 import { carryForwardToNextWeek } from "../services/carryForward";
 import {
@@ -29,8 +30,15 @@ import {
   writeBatch,
   serverTimestamp,
   Timestamp,
+  arrayUnion,
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
+import {
+  PENDING_REASON_OPTIONS,
+  getLatestPendingReason,
+  getPendingHistory,
+  isPendingReasonComplianceRequired,
+} from "../utils/pendingReason";
 
 import "./Admin.css";
 import "./Engineer.css";
@@ -118,11 +126,21 @@ function Engineer() {
   const [siteTaskSearch, setSiteTaskSearch] = useState("");
   const [selectedTaskIds, setSelectedTaskIds] = useState([]);
   const [bulkUpdating, setBulkUpdating] = useState(false);
-  const [expandedTimeline, setExpandedTimeline] = useState({});
   const [loggingOut, setLoggingOut] = useState(false);
   const [updatingTaskId, setUpdatingTaskId] = useState(null);
   const [nextWeekLoading, setNextWeekLoading] = useState(false);
   const [showWeekCloseModal, setShowWeekCloseModal] = useState(false);
+  const [showPendingReasonModal, setShowPendingReasonModal] = useState(false);
+  const [pendingReasonTaskId, setPendingReasonTaskId] = useState("");
+  const [pendingReasonType, setPendingReasonType] = useState(
+    PENDING_REASON_OPTIONS[0],
+  );
+  const [pendingReasonNote, setPendingReasonNote] = useState("");
+  const [savingPendingReason, setSavingPendingReason] = useState(false);
+  const [expandedPendingHistory, setExpandedPendingHistory] = useState({});
+  const [complianceBlockCount, setComplianceBlockCount] = useState(0);
+  const [showComplianceBlockModal, setShowComplianceBlockModal] =
+    useState(false);
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDayName, setNewTaskDayName] = useState("");
@@ -143,6 +161,8 @@ function Engineer() {
   const [reportSort, setReportSort] = useState("UPDATED_DESC");
   const [reportPage, setReportPage] = useState(1);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [showReportContacts, setShowReportContacts] = useState(false);
+  const [reportContactsSiteId, setReportContactsSiteId] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => setPageLoading(false), 600);
@@ -223,7 +243,6 @@ function Engineer() {
     setSnapshotFilter(SNAPSHOT_FILTERS.ALL);
     setSiteTaskSearch("");
     setSelectedTaskIds([]);
-    setExpandedTimeline({});
   }, [selectedSite?.id]);
 
   useEffect(() => {
@@ -333,6 +352,15 @@ function Engineer() {
   };
 
   const onNextWeek = async (isAuto = false) => {
+    const nonCompliant = getPendingComplianceViolations(tasks);
+    if (nonCompliant.length > 0) {
+      if (!isAuto) {
+        setComplianceBlockCount(nonCompliant.length);
+        setShowComplianceBlockModal(true);
+      }
+      return;
+    }
+
     const pendingCount = tasks.filter((t) => t.status === "PENDING").length;
     if (pendingCount === 0)
       return !isAuto && showError(null, "No pending tasks");
@@ -359,6 +387,14 @@ function Engineer() {
   };
 
   const confirmStartNextWeek = async () => {
+    const nonCompliant = getPendingComplianceViolations(tasks);
+    if (nonCompliant.length > 0) {
+      setShowWeekCloseModal(false);
+      setComplianceBlockCount(nonCompliant.length);
+      setShowComplianceBlockModal(true);
+      return;
+    }
+
     try {
       setShowWeekCloseModal(false);
       setNextWeekLoading(true);
@@ -381,6 +417,13 @@ function Engineer() {
     if (!updatedAt) return null;
     const diff = Date.now() - updatedAt.getTime();
     return Math.floor(diff / (1000 * 60 * 60 * 24));
+  };
+
+  const getPendingComplianceViolations = (taskList = tasks) => {
+    return (taskList || []).filter((task) => {
+      const pendingDays = getPendingSinceDays(task);
+      return isPendingReasonComplianceRequired(task, pendingDays);
+    });
   };
 
   const getTaskAgingSeverity = (task) => {
@@ -517,8 +560,59 @@ function Engineer() {
     setSelectedTaskIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
   };
 
-  const toggleTimeline = (taskId) => {
-    setExpandedTimeline((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
+  const togglePendingHistory = (taskId) => {
+    setExpandedPendingHistory((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
+  };
+
+  const openPendingReasonModal = (task) => {
+    setPendingReasonTaskId(task.id);
+    setPendingReasonType(PENDING_REASON_OPTIONS[0]);
+    setPendingReasonNote("");
+    setShowPendingReasonModal(true);
+  };
+
+  const closePendingReasonModal = () => {
+    if (savingPendingReason) return;
+    setShowPendingReasonModal(false);
+    setPendingReasonTaskId("");
+    setPendingReasonType(PENDING_REASON_OPTIONS[0]);
+    setPendingReasonNote("");
+  };
+
+  const submitPendingReason = async () => {
+    const note = pendingReasonNote.trim();
+    if (!pendingReasonType) return showError(null, "Reason type is required");
+    if (!note) return showError(null, "Delay note is required");
+    if (!pendingReasonTaskId) return showError(null, "Task not selected");
+
+    const task = tasks.find((t) => t.id === pendingReasonTaskId);
+    if (!task) return showError(null, "Task not found");
+    if (task.status !== "PENDING") return showError(null, "Only pending tasks can be logged");
+
+    try {
+      setSavingPendingReason(true);
+      const nextEntry = {
+        reasonType: pendingReasonType,
+        note,
+        loggedByName: engineerName || "ENGINEER",
+        loggedByUid: engineerUid || "",
+        loggedAt: Timestamp.now(),
+      };
+      const taskRef = doc(db, "tasks", pendingReasonTaskId);
+      await updateDoc(taskRef, {
+        pendingHistory: arrayUnion(nextEntry),
+        lastPendingReasonAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      showSuccess("Pending reason logged");
+      closePendingReasonModal();
+      await loadTasksBySite(selectedSite);
+      if (showReports) await loadEngineerTaskReport();
+    } catch (e) {
+      showError(e, "Failed to log pending reason");
+    } finally {
+      setSavingPendingReason(false);
+    }
   };
 
   const bulkMarkDone = async () => {
@@ -570,6 +664,18 @@ function Engineer() {
     sites.forEach((s) => m.set(s.id, s));
     return m;
   }, [sites]);
+
+  const reportContactsSiteName =
+    siteMap.get(reportContactsSiteId)?.name || "Selected Site";
+
+  const openReportSiteContacts = () => {
+    if (reportSiteId === "ALL") {
+      showError(null, "Select a specific site in report filters first");
+      return;
+    }
+    setReportContactsSiteId(reportSiteId);
+    setShowReportContacts(true);
+  };
 
   const reportTasks = useMemo(() => {
     const fromDate = reportDateFrom
@@ -700,6 +806,8 @@ function Engineer() {
             "Day",
             "Due Date",
             "Updated",
+            "Latest Pending Reason",
+            "Reason Note",
           ],
         ],
         body: reportTasks.map((t) => [
@@ -711,6 +819,8 @@ function Engineer() {
           t.dayName || "-",
           fmtDate(t.expectedCompletionDate),
           fmtDateTime(t.updatedAt),
+          getLatestPendingReason(t)?.reasonType || "-",
+          getLatestPendingReason(t)?.note || "-",
         ]),
         styles: { fontSize: 8, cellPadding: 2 },
         headStyles: { fillColor: [15, 23, 42] },
@@ -750,6 +860,20 @@ function Engineer() {
             </Button>
             <Button
               className="btn-muted-action"
+              onClick={() =>
+                navigate("/contacts", {
+                  state: {
+                    siteId:
+                      selectedSite?.id ||
+                      (reportSiteId !== "ALL" ? reportSiteId : ""),
+                  },
+                })
+              }
+            >
+              Contact Details
+            </Button>
+            <Button
+              className="btn-muted-action"
               onClick={() => setShowReports((v) => !v)}
             >
               {showReports ? "Back to Dashboard" : "Engineer Reports"}
@@ -768,6 +892,12 @@ function Engineer() {
             <div className="engineer-report-header">
               <h2 className="section-heading">Engineer Task Reports</h2>
               <div style={{ display: "flex", gap: 8 }}>
+                <Button
+                  className="btn-muted-action"
+                  onClick={openReportSiteContacts}
+                >
+                  Site Contacts
+                </Button>
                 <Button
                   className="btn-muted-action"
                   loading={reportLoading}
@@ -886,6 +1016,7 @@ function Engineer() {
                         <th>Day</th>
                         <th>Due Date</th>
                         <th>Updated</th>
+                        <th>Latest Pending Reason</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -905,6 +1036,7 @@ function Engineer() {
                           <td>{t.dayName || "-"}</td>
                           <td>{fmtDate(t.expectedCompletionDate)}</td>
                           <td>{fmtDateTime(t.updatedAt)}</td>
+                          <td>{getLatestPendingReason(t)?.reasonType || "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1351,6 +1483,10 @@ function Engineer() {
                           const dueDate = safeToDate(
                             task.expectedCompletionDate,
                           );
+                          const pendingHistory = getPendingHistory(task);
+                          const latestPendingReason = getLatestPendingReason(task);
+                          const complianceRequired =
+                            isPendingReasonComplianceRequired(task, pendingDays);
                           const createdAt = safeToDate(task.createdAt);
                           const todayStart = startOfDay(new Date());
                           const tomorrowStart = new Date(todayStart);
@@ -1384,7 +1520,9 @@ function Engineer() {
                               ? "task-highlight-done"
                               : isOverdue
                                 ? "task-highlight-overdue"
-                                : isHighPending
+                                : complianceRequired
+                                  ? "task-highlight-compliance"
+                                  : isHighPending
                                   ? "task-highlight-high"
                                   : isNewToday
                                     ? "task-highlight-new"
@@ -1423,6 +1561,16 @@ function Engineer() {
                                     )}
                                   </span>
                                 </div>
+                                {task.status === "PENDING" && complianceRequired && (
+                                  <div className="pending-compliance-alert">
+                                    <span className="pending-compliance-badge">
+                                      Pending reason required (3+ days)
+                                    </span>
+                                    <div className="pending-compliance-text">
+                                      Compliance Required: add delay reason before week close.
+                                    </div>
+                                  </div>
+                                )}
                                 <div className="task-meta-row">
                                   <span className="task-meta-item">
                                     <span className="task-meta-label">
@@ -1451,33 +1599,66 @@ function Engineer() {
                                     </span>
                                   </span>
                                 </div>
-                                <button
-                                  className="timeline-toggle-btn"
-                                  onClick={() => toggleTimeline(task.id)}
-                                >
-                                  {expandedTimeline[task.id]
-                                    ? "Hide Activity"
-                                    : "Show Activity"}
-                                </button>
-                                {expandedTimeline[task.id] && (
-                                  <div className="task-timeline">
-                                    <div>
-                                      <span>Created:</span>{" "}
-                                      <b>{fmtDateTime(task.createdAt)}</b>
+                                {task.status === "PENDING" && (
+                                  <div className="pending-reason-summary">
+                                    <div className="pending-reason-summary-head">
+                                      <span className="task-meta-label">LATEST PENDING REASON:</span>
+                                      <span className="task-meta-value">
+                                        {latestPendingReason?.reasonType || "—"}
+                                      </span>
                                     </div>
-                                    <div>
-                                      <span>Updated:</span>{" "}
-                                      <b>{fmtDateTime(task.updatedAt)}</b>
+                                    <div className="pending-reason-summary-note">
+                                      {latestPendingReason?.note || "No reason logged yet."}
                                     </div>
-                                    <div>
-                                      <span>Status Updated:</span>{" "}
-                                      <b>{fmtDateTime(task.statusUpdatedAt)}</b>
+                                    <div className="pending-reason-summary-actions">
+                                      <button
+                                        className="timeline-toggle-btn"
+                                        onClick={() => togglePendingHistory(task.id)}
+                                      >
+                                        {expandedPendingHistory[task.id]
+                                          ? "Hide Reason History"
+                                          : `View Reason History (${pendingHistory.length})`}
+                                      </button>
                                     </div>
+                                    {expandedPendingHistory[task.id] && (
+                                      <div className="task-timeline">
+                                        {pendingHistory.length === 0 ? (
+                                          <div>No pending reason history yet.</div>
+                                        ) : (
+                                          pendingHistory
+                                            .slice()
+                                            .sort((a, b) => {
+                                              const aTs = safeToDate(a?.loggedAt)?.getTime() || 0;
+                                              const bTs = safeToDate(b?.loggedAt)?.getTime() || 0;
+                                              return bTs - aTs;
+                                            })
+                                            .map((entry, idx) => (
+                                              <div key={`${task.id}-pending-history-${idx}`}>
+                                                <span>
+                                                  {entry?.reasonType || "-"} | {entry?.note || "-"}
+                                                </span>{" "}
+                                                <b>
+                                                  {entry?.loggedByName || "-"} @ {fmtDateTime(entry?.loggedAt)}
+                                                </b>
+                                              </div>
+                                            ))
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
                               <div className="task-mobile-divider"></div>
                               <div className="task-actions-refined">
+                                {task.status === "PENDING" && (
+                                  <button
+                                    className="btn-pro-action btn-reason"
+                                    disabled={updatingTaskId === task.id}
+                                    onClick={() => openPendingReasonModal(task)}
+                                  >
+                                    Add Pending Reason
+                                  </button>
+                                )}
                                 {task.status !== "DONE" ? (
                                   <button
                                     className="btn-pro-action btn-done"
@@ -1558,6 +1739,77 @@ function Engineer() {
                 </div>
               </div>
             )}
+            {showComplianceBlockModal && (
+              <div className="week-close-modal-overlay">
+                <div className="week-close-modal">
+                  <h3>Compliance Required</h3>
+                  <p className="pending-block-text">
+                    {complianceBlockCount} pending tasks require reason before closing week.
+                  </p>
+                  <div className="week-close-actions">
+                    <button
+                      className="btn-muted-action"
+                      onClick={() => setShowComplianceBlockModal(false)}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {showPendingReasonModal && (
+              <div className="week-close-modal-overlay">
+                <div className="week-close-modal pending-reason-modal">
+                  <h3>Add Pending Reason</h3>
+                  <div className="pending-reason-form">
+                    <label className="input-label-pro">Reason Type</label>
+                    <select
+                      className="task-select-pro-v2"
+                      value={pendingReasonType}
+                      onChange={(e) => setPendingReasonType(e.target.value)}
+                    >
+                      {PENDING_REASON_OPTIONS.map((reason) => (
+                        <option key={reason} value={reason}>
+                          {reason}
+                        </option>
+                      ))}
+                    </select>
+                    <label className="input-label-pro">Delay Note</label>
+                    <textarea
+                      className="task-input-pro-v2 pending-reason-textarea"
+                      value={pendingReasonNote}
+                      onChange={(e) => setPendingReasonNote(e.target.value)}
+                      placeholder="Engineer must explain the delay"
+                    />
+                  </div>
+                  <div className="week-close-actions">
+                    <button
+                      className="btn-muted-action"
+                      onClick={closePendingReasonModal}
+                      disabled={savingPendingReason}
+                    >
+                      Cancel
+                    </button>
+                    <Button
+                      className="btn-add-task-pro"
+                      loading={savingPendingReason}
+                      onClick={submitPendingReason}
+                    >
+                      Save Reason
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <SiteContactsModal
+              isOpen={showReportContacts}
+              onClose={() => setShowReportContacts(false)}
+              siteId={reportContactsSiteId}
+              siteName={reportContactsSiteName}
+              canManage={true}
+              actorUid={engineerUid}
+              actorName={engineerName}
+            />
           </>
         )}
       </div>

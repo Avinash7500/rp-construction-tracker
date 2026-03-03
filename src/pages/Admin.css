@@ -432,6 +432,7 @@
 .ui-badge.overdue { background: #fee2e2; color: #991b1b; }
 .ui-badge.high { background: #ffedd5; color: #9a3412; }
 .ui-badge.carry { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+.ui-badge.compliance { background: #b91c1c; color: #fff; }
 
 .task-secondary-row {
   display: flex;
@@ -450,6 +451,11 @@
 .task-card-v2.is-overdue {
   background: #fffafa;
   border-color: #fecaca;
+}
+
+.task-card-v2.is-compliance-required {
+  border-color: #fda4af;
+  box-shadow: 0 0 0 1px #fecdd3 inset;
 }
 
 /* Done State */
@@ -604,6 +610,43 @@
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--admin-text-primary);
+}
+
+.admin-pending-reason-wrap {
+  margin-top: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  background: #f8fafc;
+}
+
+.admin-pending-reason-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-pending-reason-note {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.admin-pending-history-btn {
+  margin-top: 8px;
+  margin-left: 0;
+}
+
+.admin-pending-history-box {
+  margin-top: 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 0.75rem;
+  color: #475569;
+  display: grid;
+  gap: 4px;
 }
 
 /* Sublte dimming for completed cards */

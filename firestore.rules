@@ -88,6 +88,21 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    /* ---------- SITE CONTACT DIRECTORY ---------- */
+    match /sites/{siteId}/contacts/{contactId} {
+      function assignedEngineerForSiteContacts() {
+        return exists(/databases/$(database)/documents/sites/$(siteId))
+          && get(/databases/$(database)/documents/sites/$(siteId)).data.assignedEngineerId == uid();
+      }
+
+      allow read: if isAdmin()
+        || isAccountant()
+        || (isEngineer() && assignedEngineerForSiteContacts());
+
+      allow create, update, delete: if isAdmin()
+        || (isEngineer() && assignedEngineerForSiteContacts());
+    }
+
     /* ---------- TASKS ---------- */
     match /tasks/{taskId} {
       allow read, write: if isAdmin();
