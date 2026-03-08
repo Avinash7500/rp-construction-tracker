@@ -14,3 +14,39 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## Push Notifications (FCM) Setup
+
+This project now includes Firebase Cloud Messaging for:
+
+- New task assigned
+- Site reassigned
+- Overdue task reminders (scheduled)
+- Weekly pending reminders (scheduled)
+
+### Frontend env
+
+Create `.env` (or Vercel env) with:
+
+```bash
+VITE_FIREBASE_VAPID_KEY=YOUR_WEB_PUSH_CERTIFICATE_KEY_PAIR
+```
+
+### Backend Cloud Functions
+
+Functions are in `functions/`.
+
+Install and deploy:
+
+```bash
+cd functions
+npm install
+cd ..
+firebase deploy --only functions
+```
+
+### Notes
+
+- Web push on iOS requires iOS 16.4+ and app installed to Home Screen.
+- Notification token is stored on `users/{uid}` as `pushToken` and `pushTokens`.
+- Firestore rules may need update to allow clients to write push token fields on their own user document.

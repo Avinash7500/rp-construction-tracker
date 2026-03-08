@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -110,6 +110,7 @@ function startOfDay(date = new Date()) {
 
 function Engineer() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, userDoc } = useAuth();
 
   const engineerUid = user?.uid || "";
@@ -231,6 +232,17 @@ function Engineer() {
   useEffect(() => {
     loadEngineerSites();
   }, [engineerUid]);
+
+  useEffect(() => {
+    if (!sites.length) return;
+    const params = new URLSearchParams(location.search || "");
+    const deepLinkedSiteId = params.get("siteId");
+    if (!deepLinkedSiteId) return;
+    const found = sites.find((s) => s.id === deepLinkedSiteId);
+    if (!found) return;
+    setSelectedSite(found);
+    loadTasksBySite(found);
+  }, [location.search, sites]);
 
   useEffect(() => {
     if (!showReports) return;

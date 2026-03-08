@@ -16,6 +16,38 @@ const APP_SHELL = [
   `${BASE_PATH}manifest.json`,
 ];
 
+// Firebase Cloud Messaging setup in the existing SW scope.
+// This avoids registering a second worker and keeps PWA + push unified.
+try {
+  importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js");
+  importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js");
+
+  firebase.initializeApp({
+    apiKey: "AIzaSyBQT_5WBkHgcGjLv90jMrMLDAXqP0tefco",
+    authDomain: "rp-construction-tracker-9d0eb.firebaseapp.com",
+    projectId: "rp-construction-tracker-9d0eb",
+    storageBucket: "rp-construction-tracker-9d0eb.appspot.com",
+    messagingSenderId: "314276287594",
+    appId: "1:314276287594:web:28b4e41d9ea2d9805d2613",
+  });
+
+  const messaging = firebase.messaging();
+  messaging.onBackgroundMessage((payload) => {
+    const notificationTitle =
+      payload?.notification?.title || payload?.data?.title || "RP Construction Tracker";
+    const notificationOptions = {
+      body: payload?.notification?.body || payload?.data?.body || "",
+      icon: payload?.notification?.icon || `${BASE_PATH}icons/icon-192.png`,
+      data: {
+        link: payload?.fcmOptions?.link || payload?.data?.link || `${BASE_PATH}`,
+      },
+    };
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+} catch (e) {
+  // Keep app SW behavior stable if messaging SDK load fails.
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)),
@@ -70,4 +102,22 @@ self.addEventListener("fetch", (event) => {
       }),
     );
   }
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const deepLink = event.notification?.data?.link || `${BASE_PATH}`;
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          client.navigate(deepLink);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(deepLink);
+      return null;
+    }),
+  );
 });
