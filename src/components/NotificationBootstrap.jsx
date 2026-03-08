@@ -8,7 +8,7 @@ export default function NotificationBootstrap() {
   useEffect(() => {
     if (!user?.uid) return;
     registerDevicePushToken({ user, userDoc });
-  }, [user, userDoc]);
+  }, [user?.uid]);
 
   return null;
 }

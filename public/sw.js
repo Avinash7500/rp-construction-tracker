@@ -7,7 +7,7 @@
   - Provides a basic offline fallback for SPA navigation.
 */
 
-const CACHE_NAME = "rp-construction-tracker-v2";
+const CACHE_NAME = "rp-construction-tracker-v3";
 // Resolve app base path from registration scope so this SW works on root or sub-path deploys.
 const BASE_PATH = new URL(self.registration.scope).pathname;
 const APP_SHELL = [
@@ -89,14 +89,29 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Never cache manifest/SW/auth helper responses; always hit network.
+  const noCachePaths = [
+    `${BASE_PATH}manifest.json`,
+    `${BASE_PATH}sw.js`,
+    `${BASE_PATH}firebase-messaging-sw.js`,
+    `${BASE_PATH}__/auth/handler`,
+    `${BASE_PATH}__/auth/iframe`,
+  ];
+  if (noCachePaths.some((p) => url.pathname.startsWith(p))) {
+    event.respondWith(fetch(req));
+    return;
+  }
+
   // Cache-first for same-origin static assets.
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(req).then((cached) => {
         if (cached) return cached;
         return fetch(req).then((networkResp) => {
-          const clone = networkResp.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          if (networkResp && networkResp.ok) {
+            const clone = networkResp.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          }
           return networkResp;
         });
       }),

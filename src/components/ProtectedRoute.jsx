@@ -1,38 +1,49 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { logout } from "../utils/logout";
+import AppSplash from "./AppSplash";
 
-export default function ProtectedRoute({ children, role }) {
-  const { user, userDoc, role: userRole } = useAuth();
+export default function ProtectedRoute({ children, role, allowedRoles }) {
+  const { user, userDoc, role: userRole, loading } = useAuth();
 
-  // ✅ 1) Not logged in
+  if (loading) {
+    return <AppSplash />;
+  }
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // ✅ 2) Firestore profile missing (rare but possible)
   if (!userDoc) {
-    // logout to clear session
-    logout().catch(() => {});
     return <Navigate to="/login" replace />;
   }
 
-  // ✅ 3) Access disabled
   if (userDoc?.isActive === false) {
-    logout().catch(() => {});
     return <Navigate to="/login" replace />;
   }
 
-  // ✅ 4) Role not loaded / missing
   if (!userRole) {
     return <Navigate to="/login" replace />;
   }
 
-  // ✅ 5) Role mismatch -> redirect to correct page
+  if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
+    if (!allowedRoles.includes(userRole)) {
+      if (userRole === "ADMIN") return <Navigate to="/admin" replace />;
+      if (userRole === "ACCOUNTANT") {
+        return <Navigate to="/accountant/dashboard" replace />;
+      }
+      return <Navigate to="/engineer" replace />;
+    }
+    return children;
+  }
+
   if (role && userRole !== role) {
     if (userRole === "ADMIN") return <Navigate to="/admin" replace />;
+    if (userRole === "ACCOUNTANT") {
+      return <Navigate to="/accountant/dashboard" replace />;
+    }
     return <Navigate to="/engineer" replace />;
   }
 
   return children;
 }
+

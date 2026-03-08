@@ -1,9 +1,9 @@
 // src/pages/Login.jsx
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase/firebaseConfig";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDocFromServer } from "firebase/firestore";
 import { showError } from "../utils/showError";
 import { showSuccess } from "../utils/showSuccess";
 import "./Login.css";
@@ -21,7 +21,7 @@ export default function Login() {
   const redirectByRole = async (uid) => {
     try {
       const userRef = doc(db, "users", uid);
-      const snap = await getDoc(userRef);
+      const snap = await getDocFromServer(userRef);
 
       if (!snap.exists()) {
         showError(null, "User profile missing. Contact Admin.");

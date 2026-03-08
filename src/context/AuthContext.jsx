@@ -1,9 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDocFromServer } from "firebase/firestore";
 import { auth, db } from "../firebase/firebaseConfig";
 import AppSplash from "../components/AppSplash";
-import { getAuth } from "firebase/auth";
 
 
 const AuthContext = createContext(null);
@@ -28,9 +27,10 @@ export const AuthProvider = ({ children }) => {
       }
 
       setUser(firebaseUser);
+      setLoading(true);
 
       try {
-        const snap = await getDoc(doc(db, "users", firebaseUser.uid));
+        const snap = await getDocFromServer(doc(db, "users", firebaseUser.uid));
 
         if (snap.exists()) {
           const data = snap.data();
@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, role, userDoc }}>
+    <AuthContext.Provider value={{ user, role, userDoc, loading }}>
       {children}
     </AuthContext.Provider>
   );
