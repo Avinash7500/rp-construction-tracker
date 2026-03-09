@@ -5,6 +5,7 @@ const { logger } = require("firebase-functions");
 
 admin.initializeApp();
 const db = admin.firestore();
+const APP_BASE_URL = process.env.APP_BASE_URL || "https://rp-construction-tracker.vercel.app";
 
 function asDate(value) {
   if (!value) return null;
@@ -26,6 +27,13 @@ function weekKeyForDate(date = new Date()) {
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
   return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+function toAbsoluteLink(link) {
+  if (!link) return `${APP_BASE_URL}/engineer`;
+  if (/^https?:\/\//i.test(link)) return link;
+  const safePath = link.startsWith("/") ? link : `/${link}`;
+  return `${APP_BASE_URL}${safePath}`;
 }
 
 async function getUserPushTargets(uid) {
@@ -94,17 +102,18 @@ async function sendToEngineer({ engineerId, title, body, link, dedupeKey, meta }
     return;
   }
 
+  const resolvedLink = toAbsoluteLink(link || "/engineer");
   const message = {
     tokens,
     notification: { title, body },
     data: {
       title,
       body,
-      link: link || "/engineer",
+      link: resolvedLink,
     },
     webpush: {
       fcmOptions: {
-        link: link || "/engineer",
+        link: resolvedLink,
       },
       notification: {
         icon: "/icons/icon-192.png",
@@ -127,7 +136,7 @@ async function sendToEngineer({ engineerId, title, body, link, dedupeKey, meta }
         engineerId,
         title,
         body,
-        link: link || "/engineer",
+        link: resolvedLink,
         requestedTokens: tokens.length,
         successCount: resp.successCount,
         failureCount: resp.failureCount,

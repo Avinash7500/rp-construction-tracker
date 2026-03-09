@@ -7,6 +7,27 @@ import { showSuccess } from "../utils/showSuccess";
 const INSTALLATION_KEY = "rp_push_installation_id_v1";
 let foregroundBound = false;
 
+async function showForegroundSystemNotification(payload) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  const title = payload?.notification?.title || payload?.data?.title || "RP Construction Tracker";
+  const body = payload?.notification?.body || payload?.data?.body || "";
+  const link = payload?.fcmOptions?.link || payload?.data?.link || "/engineer";
+  const icon = payload?.notification?.icon || "/icons/icon-192.png";
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    await registration.showNotification(title, {
+      body,
+      icon,
+      data: { link },
+      tag: `rp-foreground-${Date.now()}`,
+    });
+  } catch {
+    // Avoid breaking app flow if browser blocks foreground system notification.
+  }
+}
+
 function getOrCreateInstallationId() {
   const existing = localStorage.getItem(INSTALLATION_KEY);
   if (existing) return existing;
@@ -69,9 +90,10 @@ export async function registerDevicePushToken({ user, userDoc }) {
     const messaging = await getMessagingIfSupported();
     if (messaging && !foregroundBound) {
       foregroundBound = true;
-      onMessage(messaging, (payload) => {
+      onMessage(messaging, async (payload) => {
         const title = payload?.notification?.title || "Notification";
         const body = payload?.notification?.body || "";
+        await showForegroundSystemNotification(payload);
         showSuccess(body ? `${title}: ${body}` : title);
       });
     }
