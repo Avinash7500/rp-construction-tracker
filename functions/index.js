@@ -28,15 +28,47 @@ function weekKeyForDate(date = new Date()) {
   return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
 }
 
-async function getUserPushTarget(uid) {
+async function getUserPushTargets(uid) {
   const snap = await db.collection("users").doc(uid).get();
-  if (!snap.exists) return null;
+  if (!snap.exists) return { tokens: [], tokenToInstallationIds: {} };
   const user = snap.data() || {};
-  if (typeof user.pushToken === "string" && user.pushToken) return user.pushToken;
+  const tokenSet = new Set();
+  const tokenToInstallationIds = {};
+
+  if (typeof user.pushToken === "string" && user.pushToken) {
+    tokenSet.add(user.pushToken);
+  }
 
   const pushTokens = user.pushTokens || {};
-  const first = Object.values(pushTokens).find((row) => row && typeof row.token === "string" && row.token);
-  return first ? first.token : null;
+  for (const [installationId, row] of Object.entries(pushTokens)) {
+    const token = row && typeof row.token === "string" ? row.token : "";
+    if (!token) continue;
+    tokenSet.add(token);
+    if (!tokenToInstallationIds[token]) tokenToInstallationIds[token] = [];
+    tokenToInstallationIds[token].push(installationId);
+  }
+
+  return { tokens: Array.from(tokenSet), tokenToInstallationIds };
+}
+
+function isTokenInvalidError(code) {
+  return code === "messaging/registration-token-not-registered"
+    || code === "messaging/invalid-registration-token";
+}
+
+async function cleanupInvalidTokens(engineerId, invalidTokens, tokenToInstallationIds) {
+  if (!engineerId || !invalidTokens.length) return;
+  const updates = {};
+
+  invalidTokens.forEach((token) => {
+    const installationIds = tokenToInstallationIds[token] || [];
+    installationIds.forEach((installationId) => {
+      updates[`pushTokens.${installationId}`] = admin.firestore.FieldValue.delete();
+    });
+  });
+
+  if (Object.keys(updates).length === 0) return;
+  await db.collection("users").doc(engineerId).set(updates, { merge: true });
 }
 
 async function alreadySent(dedupeKey) {
@@ -56,14 +88,14 @@ async function sendToEngineer({ engineerId, title, body, link, dedupeKey, meta }
   if (!engineerId) return;
   if (dedupeKey && await alreadySent(dedupeKey)) return;
 
-  const token = await getUserPushTarget(engineerId);
-  if (!token) {
+  const { tokens, tokenToInstallationIds } = await getUserPushTargets(engineerId);
+  if (!tokens.length) {
     logger.info("No push token found for engineer", engineerId);
     return;
   }
 
   const message = {
-    token,
+    tokens,
     notification: { title, body },
     data: {
       title,
@@ -81,13 +113,24 @@ async function sendToEngineer({ engineerId, title, body, link, dedupeKey, meta }
   };
 
   try {
-    await admin.messaging().send(message);
+    const resp = await admin.messaging().sendEachForMulticast(message);
+    const invalidTokens = [];
+    resp.responses.forEach((r, idx) => {
+      if (!r.success && isTokenInvalidError(r.error?.code)) {
+        invalidTokens.push(tokens[idx]);
+      }
+    });
+    await cleanupInvalidTokens(engineerId, invalidTokens, tokenToInstallationIds);
+
     if (dedupeKey) {
       await markSent(dedupeKey, {
         engineerId,
         title,
         body,
         link: link || "/engineer",
+        requestedTokens: tokens.length,
+        successCount: resp.successCount,
+        failureCount: resp.failureCount,
         ...meta,
       });
     }
@@ -213,4 +256,3 @@ exports.sendWeeklyPendingReminders = onSchedule(
     logger.info("Weekly pending reminder run complete", { sentCount: sends.length });
   },
 );
-
