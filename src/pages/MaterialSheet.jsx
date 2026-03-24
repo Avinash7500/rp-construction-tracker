@@ -1,292 +1,380 @@
-// src/pages/MaterialSheet.jsx
-import React, { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { doc, getDoc, collection, query, where, getDocs, writeBatch, serverTimestamp, orderBy } from "firebase/firestore";
+﻿import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+  writeBatch,
+} from "firebase/firestore";
+import AccountantShell from "../components/AccountantShell";
 import { db } from "../firebase/firebaseConfig";
-import Layout from "../components/Layout";
-import Button from "../components/Button";
-import { showSuccess } from "../utils/showSuccess";
 import { showError } from "../utils/showError";
+import { showSuccess } from "../utils/showSuccess";
+import { generateMaterialPdf } from "../utils/pdf/materialPdf";
 
-const MARATHI_DAYS = ["रविवार", "सोमवार", "मंगळवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार"];
+const EMPTY_ROW = () => ({
+  id: "",
+  date: new Date().toISOString().slice(0, 10),
+  details: "",
+  dealerId: "",
+  dealerName: "",
+  qty: 0,
+  rate: 0,
+  paidAmount: 0,
+});
 
-// 🔥 HELPER: Get Week Key from Date (Matches your system format: YYYY-Www)
-const getWeekKeyFromDate = (date) => {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-  const yearStart = new Date(d.getFullYear(), 0, 1);
-  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-  return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-};
+function getBillAmount(row) {
+  if (typeof row.billAmount === "number") return row.billAmount;
+  return (row.qty || 0) * (row.rate || 0);
+}
 
-function MaterialSheet() {
-  const { siteId } = useParams();
+export default function MaterialSheet() {
+  const { siteId, weekKey } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  const queryParams = new URLSearchParams(location.search);
-  const historyWeek = queryParams.get("week");
-
-  const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
-  const [isReadOnly, setIsReadOnly] = useState(false);
-  
-  const [rows, setRows] = useState([]);
+  const [site, setSite] = useState(null);
   const [dealers, setDealers] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [paymentsByEntry, setPaymentsByEntry] = useState({});
+
+  const targetWeekKey = weekKey || site?.currentWeekKey || "";
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const siteSnap = await getDoc(doc(db, "sites", siteId));
+      if (!siteSnap.exists()) {
+        setSite(null);
+        return;
+      }
+      const siteData = { id: siteSnap.id, ...siteSnap.data() };
+      setSite(siteData);
+
+      const effectiveWeek = weekKey || siteData.currentWeekKey;
+      const [dealerSnap, matSnap, paymentSnap] = await Promise.all([
+        getDocs(collection(db, "dealers")),
+        getDocs(query(collection(db, "material_entries"), where("siteId", "==", siteId), where("weekKey", "==", effectiveWeek))),
+        getDocs(query(collection(db, "dealer_payments"), where("siteId", "==", siteId))),
+      ]);
+
+      const dealerList = dealerSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setDealers(dealerList);
+
+      const paymentMap = paymentSnap.docs.reduce((acc, d) => {
+        const p = d.data();
+        const key = p.materialEntryId || "";
+        if (!key) return acc;
+        acc[key] = (acc[key] || 0) + (p.paymentAmount || 0);
+        return acc;
+      }, {});
+      setPaymentsByEntry(paymentMap);
+
+      const materialRows = matSnap.docs.map((d) => ({ id: d.id, ...d.data(), paidAmount: 0 }));
+      setRows(materialRows.length ? materialRows : [EMPTY_ROW()]);
+    } catch (e) {
+      showError(e, "Failed to load material sheet");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadMaterialData = async () => {
-      try {
-        const siteSnap = await getDoc(doc(db, "sites", siteId));
-        if (siteSnap.exists()) {
-          const siteData = siteSnap.data();
-          setSite({ id: siteSnap.id, ...siteData });
+    loadData();
+  }, [siteId, weekKey]);
 
-          const targetWeek = historyWeek || siteData.currentWeekKey;
-          if (historyWeek && historyWeek !== siteData.currentWeekKey) setIsReadOnly(true);
+  const updateRow = (index, field, value) => {
+    const next = [...rows];
+    next[index] = { ...next[index], [field]: ["qty", "rate", "paidAmount"].includes(field) ? Number(value || 0) : value };
+    if (field === "dealerName") {
+      const dealer = dealers.find((d) => (d.name || "").toLowerCase() === String(value || "").trim().toLowerCase());
+      next[index].dealerId = dealer?.id || "";
+    }
+    setRows(next);
+  };
 
-          const q = query(
-            collection(db, "material_entries"),
-            where("siteId", "==", siteId),
-            where("weekKey", "==", targetWeek)
-          );
-          const snap = await getDocs(q);
-          
-          if (!snap.empty) {
-            const existingData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            if (!historyWeek) {
-              const lastSaved = existingData[0]?.updatedAt?.toDate();
-              if (lastSaved && Math.ceil(Math.abs(new Date() - lastSaved) / (1000 * 60 * 60 * 24)) > 30) {
-                setIsLocked(true);
-              }
-            }
-            setRows(existingData);
-          } else if (!historyWeek) {
-            addNewRow();
-          }
-        }
-
-        const dealerSnap = await getDocs(query(collection(db, "dealers"), orderBy("name", "asc")));
-        setDealers(dealerSnap.docs.map(d => d.data().name));
-
-      } catch (e) {
-        showError(e, "Failed to load material sheet");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadMaterialData();
-  }, [siteId, historyWeek]);
-
-  const addNewRow = () => {
-    if (isReadOnly || isLocked) return;
-    const today = new Date();
-    setRows([...rows, { 
-      id: `temp_${Date.now()}_${Math.random()}`, 
-      dayName: MARATHI_DAYS[today.getDay()], 
-      date: today.toISOString().split('T')[0], 
-      details: "", 
-      dealerName: "", 
-      qty: 0, 
-      rate: 0,
-      paidAmount: 0 
-    }]);
+  const addRow = () => {
+    setRows((prev) => [...prev, EMPTY_ROW()]);
   };
 
   const removeRow = (index) => {
-    if (isReadOnly || isLocked) return;
-    setRows(rows.filter((_, i) => i !== index));
-  };
-
-  const handleInputChange = (index, field, value) => {
-    if (isLocked || isReadOnly) return;
-    const updatedRows = [...rows];
-    
-    if (field === 'date') {
-      // 🔥 UPDATED WEEK GUARD LOGIC
-      const selectedDate = new Date(value);
-      const selectedWeekKey = getWeekKeyFromDate(selectedDate);
-
-      // Compare selected date's week with Site's Current Week
-      if (selectedWeekKey !== site.currentWeekKey) {
-         alert(`Wrong Week! This date belongs to ${selectedWeekKey}, but the site is currently on ${site.currentWeekKey}. Please "Create New Week" in the Registry first.`);
-         return;
-      }
-
-      updatedRows[index].dayName = MARATHI_DAYS[selectedDate.getDay()];
-      updatedRows[index].date = value;
-    } else if (['qty', 'rate', 'paidAmount'].includes(field)) {
-      updatedRows[index][field] = value === "" ? 0 : parseFloat(value);
-    } else {
-      updatedRows[index][field] = value;
-    }
-    setRows(updatedRows);
+    setRows((prev) => prev.filter((_, i) => i !== index));
   };
 
   const totals = useMemo(() => {
     return rows.reduce((acc, row) => {
-      const bill = row.qty * row.rate;
-      acc.grandTotal += bill;
-      acc.totalPaid += (row.paidAmount || 0);
+      const bill = getBillAmount(row);
+      const existingPaid = row.id ? (paymentsByEntry[row.id] || row.paidAmount || 0) : 0;
+      const newPaid = Number(row.paidAmount || 0);
+      acc.totalBill += bill;
+      acc.totalPaid += existingPaid + newPaid;
       return acc;
-    }, { grandTotal: 0, totalPaid: 0 });
-  }, [rows]);
+    }, { totalBill: 0, totalPaid: 0 });
+  }, [rows, paymentsByEntry]);
 
-  const saveSheet = async () => {
-    if (isLocked || isReadOnly) return;
+  const handleSave = async () => {
+    if (!site) return;
     try {
       setSaving(true);
+      const effectiveWeek = targetWeekKey;
       const batch = writeBatch(db);
-      const weekKey = site.currentWeekKey;
+      const paymentsToCreate = [];
 
-      rows.forEach((row) => {
-        const docId = row.id.toString().startsWith('temp_') 
-          ? `${siteId}_${weekKey}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` 
-          : row.id;
-        const docRef = doc(db, "material_entries", docId);
-        
-        batch.set(docRef, {
-          dayName: row.dayName,
-          date: row.date,
-          details: row.details,
-          dealerName: row.dealerName,
-          qty: row.qty,
-          rate: row.rate,
-          paidAmount: row.paidAmount || 0,
+      for (const row of rows) {
+        if (!row.details && !row.qty && !row.rate) continue;
+        const rowId = row.id || doc(collection(db, "material_entries")).id;
+        const billAmount = getBillAmount(row);
+        const materialRef = doc(db, "material_entries", rowId);
+
+        batch.set(materialRef, {
           siteId,
-          weekKey,
-          updatedAt: serverTimestamp()
+          weekKey: effectiveWeek,
+          date: row.date || new Date().toISOString().slice(0, 10),
+          details: row.details || "",
+          dealerId: row.dealerId || "",
+          dealerName: row.dealerName || "",
+          qty: Number(row.qty || 0),
+          rate: Number(row.rate || 0),
+          billAmount,
+          updatedAt: serverTimestamp(),
         }, { merge: true });
-      });
+
+        const payNow = Number(row.paidAmount || 0);
+        if (payNow > 0) {
+          paymentsToCreate.push({
+            dealerId: row.dealerId || "",
+            siteId,
+            materialEntryId: rowId,
+            paymentAmount: payNow,
+            paymentDate: row.date || new Date().toISOString().slice(0, 10),
+            notes: "Payment from material weekly sheet",
+            createdAt: serverTimestamp(),
+          });
+        }
+      }
 
       await batch.commit();
-      showSuccess("Material Sheet Saved ✅");
-      navigate(`/accountant/site/${siteId}/material`);
+      for (const pay of paymentsToCreate) {
+        await addDoc(collection(db, "dealer_payments"), pay);
+      }
+      showSuccess("Material sheet saved");
+      await loadData();
     } catch (e) {
-      showError(e, "Save failed");
+      showError(e, "Failed to save material sheet");
     } finally {
       setSaving(false);
     }
   };
 
+  const handleWeekCompleted = async () => {
+    if (!site) return;
+    try {
+      const [year, weekPart] = String(targetWeekKey).split("-W");
+      const next = `${year}-W${String(Number(weekPart || 0) + 1).padStart(2, "0")}`;
+      const [nextLabourSnap, nextMaterialSnap] = await Promise.all([
+        getDocs(
+          query(
+            collection(db, "labour_entries"),
+            where("siteId", "==", siteId),
+            where("weekKey", "==", next),
+          ),
+        ),
+        getDocs(
+          query(
+            collection(db, "material_entries"),
+            where("siteId", "==", siteId),
+            where("weekKey", "==", next),
+          ),
+        ),
+      ]);
+
+      const initBatch = writeBatch(db);
+      if (nextLabourSnap.empty) {
+        const labourInitRef = doc(collection(db, "labour_entries"));
+        initBatch.set(labourInitRef, {
+          siteId,
+          weekKey: next,
+          workType: "GENERAL",
+          dayName: "à¤¸à¥‹à¤®à¤µà¤¾à¤°",
+          details: "",
+          mistriCount: 0,
+          mistriRate: 0,
+          labourCount: 0,
+          labourRate: 0,
+          isPlaceholder: true,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+      if (nextMaterialSnap.empty) {
+        const materialInitRef = doc(collection(db, "material_entries"));
+        initBatch.set(materialInitRef, {
+          siteId,
+          weekKey: next,
+          date: new Date().toISOString().slice(0, 10),
+          details: "",
+          dealerId: "",
+          dealerName: "",
+          qty: 0,
+          rate: 0,
+          billAmount: 0,
+          isPlaceholder: true,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+      await initBatch.commit();
+
+      await updateDoc(doc(db, "sites", siteId), {
+        currentWeekKey: next,
+        totalMaterialSpend: totals.totalBill,
+        updatedAt: serverTimestamp(),
+      });
+      showSuccess(`Week completed. Next week: ${next}`);
+      navigate(`/accountant/site/${siteId}`);
+    } catch (e) {
+      showError(e, "Failed to complete week");
+    }
+  };
+
+  const handlePdf = async () => {
+    const pdfRows = rows.map((row) => {
+      const bill = getBillAmount(row);
+      const existingPaid = row.id ? (paymentsByEntry[row.id] || 0) : 0;
+      const paid = existingPaid + Number(row.paidAmount || 0);
+      return { ...row, billAmount: bill, paidAmount: paid };
+    });
+    await generateMaterialPdf({
+      siteName: site?.name || "-",
+      weekKey: targetWeekKey,
+      engineerName: site?.assignedEngineerName || "-",
+      rows: pdfRows,
+    });
+  };
+
+  if (loading) {
+    return (
+      <AccountantShell title="Material Weekly Sheet">
+        <div>Loading...</div>
+      </AccountantShell>
+    );
+  }
+
+  if (!site) {
+    return (
+      <AccountantShell title="Material Weekly Sheet">
+        <div>Site not found.</div>
+      </AccountantShell>
+    );
+  }
+
   return (
-    <Layout>
-      <div className="admin-dashboard material-page-container accountant-theme">
-        <div className="sticky-back-header-v5">
-          <button className="btn-back-pro" onClick={() => navigate(`/accountant/site/${siteId}/material`)}>
-            <span className="back-icon">←</span>
-            <div className="back-text">
-                <span className="back-label">Back to Material Registry</span>
-                <span className="back-sub">{isReadOnly ? "View History Mode" : "Live Entry Mode"}</span>
-            </div>
-          </button>
-          <div className="engineer-badge-pill">
-            <div className="badge-content-v5">
-              <span className="eng-label-v5">मटेरियल एन्ट्री (With Dealer & Payment)</span>
-              <h2 className="eng-name-v5">{site?.name}</h2>
-            </div>
-          </div>
-          {isReadOnly && (
-            <button className="btn-logout-v5" onClick={() => window.print()} style={{marginLeft: 'auto', background: '#f8fafc', color: '#1e293b'}}>🖨️ Print</button>
-          )}
+    <AccountantShell
+      title={`Material Weekly Sheet (${targetWeekKey})`}
+      subtitle={`${site.name} | à¤¤à¤¾à¤°à¥€à¤–, à¤¡à¤¿à¤²à¤°, à¤¬à¤¿à¤² à¤†à¤£à¤¿ à¤ªà¥‡à¤®à¥‡à¤‚à¤Ÿ à¤Ÿà¥à¤°à¥…à¤•à¤¿à¤‚à¤—`}
+      actions={(
+        <>
+          <button className="btn-muted-action" onClick={() => navigate(`/accountant/site/${siteId}`)}>Back</button>
+          <button className="btn-primary-v5" onClick={handlePdf}>Generate PDF</button>
+        </>
+      )}
+    >
+      <section className="acc-card">
+        <div className="acc-card-header">
+          <h3 style={{ margin: 0 }}>Material Entries</h3>
+          <button className="btn-muted-action" onClick={addRow}>+ Add Row</button>
         </div>
-
-        <datalist id="dealer-list">
-          {dealers.map((name, i) => <option key={i} value={name} />)}
+        <datalist id="material-dealers-list">
+          {dealers.map((dealer) => (
+            <option key={dealer.id} value={dealer.name || ""} />
+          ))}
         </datalist>
-
-        <div className="master-table-container desktop-view" style={{marginTop: '20px'}}>
-          <table className="master-table">
+        <div className="acc-card-body" style={{ paddingTop: 0, overflowX: "auto" }}>
+          <table className="acc-table">
             <thead>
               <tr>
-                <th style={{ width: '150px' }}>तारीख (Date)</th>
-                <th>तपशील (Details)</th>
-                <th style={{ width: '180px' }}>डिलीर (Dealer)</th>
-                <th style={{ width: '90px' }}>ब्रास/नग</th>
-                <th style={{ width: '100px' }}>दर (Rate)</th>
-                <th style={{ width: '120px' }}>एकूण (Bill)</th>
-                <th style={{ width: '120px', color: '#059669' }}>पेड (Paid)</th>
-                {!isReadOnly && <th style={{ width: '40px' }}></th>}
+                <th>à¤¤à¤¾à¤°à¥€à¤–</th>
+                <th>à¤¤à¤ªà¤¶à¥€à¤²</th>
+                <th>Dealer</th>
+                <th className="acc-right">Qty</th>
+                <th className="acc-right">Rate</th>
+                <th className="acc-right">Bill Amount</th>
+                <th className="acc-right">Paid Amount</th>
+                <th className="acc-right">Remaining</th>
+                <th />
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, index) => (
-                <tr key={row.id}>
-                  <td>
-                    {isReadOnly ? <span>{row.date} <br/><small>{row.dayName}</small></span> : 
-                    <input type="date" disabled={isLocked} className="sheet-input-text" value={row.date} onChange={(e) => handleInputChange(index, 'date', e.target.value)} />}
-                  </td>
-                  <td>
-                    {isReadOnly ? <span>{row.details}</span> :
-                    <input type="text" disabled={isLocked} className="sheet-input-text" value={row.details} onChange={(e) => handleInputChange(index, 'details', e.target.value)} placeholder="Cement..." />}
-                  </td>
-                  <td>
-                    {isReadOnly ? <span style={{fontWeight: '700'}}>{row.dealerName || "Local"}</span> :
-                    <input type="text" list="dealer-list" disabled={isLocked} className="sheet-input-text" value={row.dealerName} onChange={(e) => handleInputChange(index, 'dealerName', e.target.value)} placeholder="Search or Type..." />}
-                  </td>
-                  <td>
-                    {isReadOnly ? <span>{row.qty}</span> :
-                    <input type="number" disabled={isLocked} className="sheet-input-num" value={row.qty} onChange={(e) => handleInputChange(index, 'qty', e.target.value)} />}
-                  </td>
-                  <td>
-                    {isReadOnly ? <span>{row.rate}</span> :
-                    <input type="number" disabled={isLocked} className="sheet-input-num" value={row.rate} onChange={(e) => handleInputChange(index, 'rate', e.target.value)} />}
-                  </td>
-                  <td style={{ textAlign: 'right', fontWeight: 'bold' }}>₹ {(row.qty * row.rate).toLocaleString('en-IN')}</td>
-                  <td>
-                    {isReadOnly ? <span style={{color: '#059669', fontWeight: '800'}}>₹ {row.paidAmount || 0}</span> :
-                    <input type="number" disabled={isLocked} className="sheet-input-num payment-input" value={row.paidAmount} onChange={(e) => handleInputChange(index, 'paidAmount', e.target.value)} placeholder="Amount Paid" />}
-                  </td>
-                  {!isReadOnly && (
+              {rows.map((row, idx) => {
+                const bill = getBillAmount(row);
+                const existingPaid = row.id ? (paymentsByEntry[row.id] || 0) : 0;
+                const pending = bill - (existingPaid + Number(row.paidAmount || 0));
+                return (
+                  <tr key={row.id || `row-${idx}`}>
                     <td>
-                      {!isLocked && <button onClick={() => removeRow(index)} style={{background:'none', border:'none', cursor:'pointer'}}>❌</button>}
+                      <input type="date" value={row.date || ""} onChange={(e) => updateRow(idx, "date", e.target.value)} className="sheet-input-text" />
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td>
+                      <input value={row.details || ""} onChange={(e) => updateRow(idx, "details", e.target.value)} className="sheet-input-text" />
+                    </td>
+                    <td>
+                      <input
+                        list="material-dealers-list"
+                        value={row.dealerName || ""}
+                        onChange={(e) => updateRow(idx, "dealerName", e.target.value)}
+                        className="sheet-input-text"
+                        placeholder="Select or type dealer"
+                      />
+                    </td>
+                    <td className="acc-right">
+                      <input type="number" value={row.qty || 0} onChange={(e) => updateRow(idx, "qty", e.target.value)} className="sheet-input-num" />
+                    </td>
+                    <td className="acc-right">
+                      <input type="number" value={row.rate || 0} onChange={(e) => updateRow(idx, "rate", e.target.value)} className="sheet-input-num" />
+                    </td>
+                    <td className="acc-right">â‚¹ {bill.toLocaleString("en-IN")}</td>
+                    <td className="acc-right">
+                      <input type="number" value={row.paidAmount || 0} onChange={(e) => updateRow(idx, "paidAmount", e.target.value)} className="sheet-input-num" />
+                    </td>
+                    <td className="acc-right">â‚¹ {pending.toLocaleString("en-IN")}</td>
+                    <td className="acc-right">
+                      <button className="btn-muted-action" onClick={() => removeRow(idx)}>Remove</button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-          
-          {!isLocked && !isReadOnly && (
-            <button className="btn-add-row" onClick={addNewRow}>+ Add New Material Row</button>
-          )}
         </div>
+      </section>
 
-        <div className="sheet-actions-footer">
-          <div className="footer-summary-grid">
-            <div className="summary-item">
-               <span className="label">Grand Total:</span>
-               <span className="val">₹ {totals.grandTotal.toLocaleString('en-IN')}</span>
-            </div>
-            <div className="summary-item">
-               <span className="label" style={{color: '#059669'}}>Total Paid:</span>
-               <span className="val" style={{color: '#059669'}}>₹ {totals.totalPaid.toLocaleString('en-IN')}</span>
-            </div>
-            <div className="summary-item">
-               <span className="label" style={{color: '#dc2626'}}>Pending:</span>
-               <span className="val" style={{color: '#dc2626'}}>₹ {(totals.grandTotal - totals.totalPaid).toLocaleString('en-IN')}</span>
-            </div>
-          </div>
-          {!isLocked && !isReadOnly && <Button loading={saving} onClick={saveSheet}>💾 Save Material & Payments</Button>}
-        </div>
-      </div>
+      <section className="acc-grid-3">
+        <article className="acc-stat-card">
+          <div className="acc-stat-label">Total Bill</div>
+          <div className="acc-stat-value">â‚¹ {totals.totalBill.toLocaleString("en-IN")}</div>
+        </article>
+        <article className="acc-stat-card">
+          <div className="acc-stat-label">Total Paid</div>
+          <div className="acc-stat-value">â‚¹ {totals.totalPaid.toLocaleString("en-IN")}</div>
+        </article>
+        <article className="acc-stat-card">
+          <div className="acc-stat-label">Pending Amount</div>
+          <div className="acc-stat-value">â‚¹ {(totals.totalBill - totals.totalPaid).toLocaleString("en-IN")}</div>
+        </article>
+      </section>
 
-      <style>{`
-        .btn-add-row { width: 100%; padding: 15px; margin-top: 10px; background: #f8fafc; border: 2px dashed #cbd5e1; color: #64748b; font-weight: 700; border-radius: 8px; cursor: pointer; }
-        .sheet-input-num, .sheet-input-text { width: 100%; border: 1px solid #e2e8f0; padding: 8px; border-radius: 4px; text-align: center; }
-        .payment-input { border-color: #10b981 !important; background: #f0fdf4; color: #065f46; font-weight: 700; }
-        .sheet-actions-footer { margin-top: 2rem; padding: 25px; background: #f1f5f9; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
-        .footer-summary-grid { display: flex; gap: 30px; }
-        .summary-item { display: flex; flex-direction: column; }
-        .summary-item .label { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; }
-        .summary-item .val { font-size: 1.4rem; font-weight: 900; }
-        @media print { .sticky-back-header-v5, .btn-add-row, .sheet-actions-footer button { display: none !important; } }
-      `}</style>
-    </Layout>
+      <section style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <button className="btn-muted-action" onClick={handleWeekCompleted}>Week Completed</button>
+        <button className="btn-primary-v5" onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : "Save"}
+        </button>
+      </section>
+    </AccountantShell>
   );
 }
 
-export default MaterialSheet;
+

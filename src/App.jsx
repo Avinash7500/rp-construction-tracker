@@ -27,6 +27,8 @@ import MaterialSheet from "./pages/MaterialSheet";
 // Add this import at the top
 import DealerRegistry from "./pages/DealerRegistry";
 import DealerLedger from "./pages/DealerLedger";
+import AccountantReports from "./pages/AccountantReports";
+import AccountantAttendance from "./pages/AccountantAttendance";
 
 export default function App() {
   return (
@@ -67,7 +69,7 @@ export default function App() {
       />
 
       <Route
-        path="/accountant/site/:siteId/labour/:workType"
+        path="/accountant/site/:siteId/labour/work/:workType"
         element={
           <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
             <LabourSheet />
@@ -76,6 +78,15 @@ export default function App() {
       />
 
       {/* Dealer master routes */}
+      <Route
+        path="/accountant/site/:siteId/labour/:weekKey"
+        element={
+          <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
+            <LabourSheet />
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/accountant/dealers"
         element={
@@ -100,6 +111,14 @@ export default function App() {
       {/* 2. The Actual Data Entry Page (The dynamic "+ Add Row" sheet) */}
       <Route
         path="/accountant/site/:siteId/material-sheet"
+        element={
+          <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
+            <MaterialSheet />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/accountant/site/:siteId/material/:weekKey"
         element={
           <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
             <MaterialSheet />
@@ -169,6 +188,23 @@ export default function App() {
         }
       />
       <Route path="/accountant/dealers/:dealerId" element={<ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}><DealerLedger /></ProtectedRoute>} />
+      <Route path="/accountant/dealer/:dealerId" element={<ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}><DealerLedger /></ProtectedRoute>} />
+      <Route
+        path="/accountant/reports"
+        element={
+          <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
+            <AccountantReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/accountant/attendance"
+        element={
+          <ProtectedRoute allowedRoles={["ACCOUNTANT", "ADMIN"]}>
+            <AccountantAttendance />
+          </ProtectedRoute>
+        }
+      />
       {/* Advanced Reports */}
       <Route
         path="/admin/reports/advanced"

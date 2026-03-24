@@ -1,203 +1,186 @@
-// src/pages/AccountantDashboard.jsx
-import React, { useState, useEffect } from "react";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
-import { db, auth } from "../firebase/firebaseConfig";
-import { signOut } from "firebase/auth";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Layout from "../components/Layout";
+import {
+  collection,
+  getDocs,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
+import AccountantShell from "../components/AccountantShell";
 import SkeletonBox from "../components/SkeletonBox";
-import { showSuccess } from "../utils/showSuccess";
+import { db } from "../firebase/firebaseConfig";
 import { showError } from "../utils/showError";
+import { formatMarathiWeekFromWeekKey } from "../utils/marathiWeekFormat";
 
-function AccountantDashboard() {
-  const [sites, setSites] = useState([]);
-  const [loading, setLoading] = useState(true);
+function computeLabourSpend(entry) {
+  return (entry.mistriCount || 0) * (entry.mistriRate || 0)
+    + (entry.labourCount || 0) * (entry.labourRate || 0);
+}
+
+function computeMaterialSpend(entry) {
+  if (typeof entry.billAmount === "number") return entry.billAmount;
+  return (entry.qty || 0) * (entry.rate || 0);
+}
+
+function getCurrentWeekKey(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+export default function AccountantDashboard() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [sites, setSites] = useState([]);
 
-  useEffect(() => {
-    const loadSitesAndTotals = async () => {
-      try {
-        setLoading(true);
-        // 1. Fetch all project sites
-        const q = query(collection(db, "sites"), orderBy("createdAt", "desc"));
-        const snap = await getDocs(q);
-        const sitesData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+      const siteSnap = await getDocs(
+        query(collection(db, "sites"), orderBy("createdAt", "desc")),
+      );
+      const siteList = siteSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((site) => site.isActive !== false);
 
-        // 2. Fetch all financial entries
-        const [labourSnap, materialSnap] = await Promise.all([
-          getDocs(collection(db, "labour_entries")),
-          getDocs(collection(db, "material_entries"))
-        ]);
+      const enriched = await Promise.all(
+        siteList.map(async (site) => {
+          const [labourSnap, materialSnap] = await Promise.all([
+            getDocs(
+              query(
+                collection(db, "labour_entries"),
+                where("siteId", "==", site.id),
+              ),
+            ),
+            getDocs(
+              query(
+                collection(db, "material_entries"),
+                where("siteId", "==", site.id),
+              ),
+            ),
+          ]);
 
-        const allLabour = labourSnap.docs.map(d => d.data());
-        const allMaterial = materialSnap.docs.map(d => d.data());
-
-        // 3. Map real-time totals to each site
-        const sitesWithTotals = sitesData.map(site => {
-          const siteLabourTotal = allLabour
-            .filter(entry => entry.siteId === site.id)
-            .reduce((sum, entry) => sum + (entry.mistriCount * entry.mistriRate) + (entry.labourCount * entry.labourRate), 0);
-
-          const siteMaterialData = allMaterial.filter(entry => entry.siteId === site.id);
-          
-          const siteMaterialTotal = siteMaterialData.reduce((sum, entry) => sum + (entry.qty * entry.rate), 0);
-          const sitePaidTotal = siteMaterialData.reduce((sum, entry) => sum + (entry.paidAmount || 0), 0);
-
+          const labourTotal = labourSnap.docs.reduce(
+            (sum, docSnap) => sum + computeLabourSpend(docSnap.data()),
+            0,
+          );
+          const materialTotal = materialSnap.docs.reduce(
+            (sum, docSnap) => sum + computeMaterialSpend(docSnap.data()),
+            0,
+          );
           return {
             ...site,
-            realGrandTotal: siteLabourTotal + siteMaterialTotal,
-            pendingBalance: siteMaterialTotal - sitePaidTotal // Track what's still owed
+            totalLabourSpend: labourTotal,
+            totalMaterialSpend: materialTotal,
+            totalSpend: labourTotal + materialTotal,
           };
-        });
+        }),
+      );
 
-        setSites(sitesWithTotals);
-      } catch (e) {
-        console.error("Error loading dashboard data", e);
-        showError(e, "Failed to calculate project totals");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadSitesAndTotals();
-  }, []);
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      showSuccess("Logged out successfully");
-      navigate("/login");
+      setSites(enriched);
     } catch (e) {
-      showError(e, "Logout failed");
+      showError(e, "Failed to load accountant dashboard");
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  const totalSpendAllSites = useMemo(() => {
+    return sites.reduce((sum, site) => sum + (site.totalSpend || 0), 0);
+  }, [sites]);
+
+  const currentWeekLabel = useMemo(() => {
+    return formatMarathiWeekFromWeekKey(getCurrentWeekKey(new Date()));
+  }, []);
+
   return (
-    <Layout>
-      <div className="admin-dashboard dashboard-container accountant-theme">
-        <header className="admin-header-card dashboard-header">
-          <div className="header-info">
-            <h1 className="header-title">Accountant MIS</h1>
-            <span className="header-badge">Real-Time Financial Overview</span>
+    <AccountantShell
+      title="Accountant Dashboard"
+      subtitle="लेखापाल डॅशबोर्ड"
+      actions={(
+        <button className="btn-primary-v5" onClick={loadDashboard}>
+          Refresh
+        </button>
+      )}
+    >
+      <section className="acc-grid-3">
+        <article className="acc-stat-card">
+          <div className="acc-stat-label">Active Sites</div>
+          <div className="acc-stat-value">{sites.length}</div>
+        </article>
+        <article className="acc-stat-card">
+          <div className="acc-stat-label">Combined Total Spend</div>
+          <div className="acc-stat-value">₹ {totalSpendAllSites.toLocaleString("en-IN")}</div>
+        </article>
+        <article className="acc-stat-card">
+          <div className="acc-stat-label">सध्याचा आठवडा</div>
+          <div className="acc-stat-value" style={{ fontSize: "1rem" }}>
+            {currentWeekLabel}
           </div>
-          
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            {/* 🔥 NEW: Manage Dealers Button */}
-            <button 
-              className="btn-primary-v5" 
-              onClick={() => navigate("/accountant/dealers")}
-              style={{ 
-                background: '#0f172a', 
-                color: 'white', 
-                padding: '8px 18px', 
-                borderRadius: '25px', 
-                border: 'none', 
-                cursor: 'pointer', 
-                fontWeight: 'bold',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-              }}
-            >
-              🚚 Manage Dealers
-            </button>
-            
-            <button className="btn-logout-v5" onClick={handleLogout} style={{
-              padding: '8px 20px', borderRadius: '25px', border: '1px solid #e2e8f0',
-              background: 'white', cursor: 'pointer', fontWeight: 'bold', color: '#ef4444'
-            }}>
-              🚪 Logout
-            </button>
-          </div>
-        </header>
+        </article>
+      </section>
 
-        <section className="sites-section">
-          <div className="sites-section-header">
-            <div className="highlight-pill">
-              <h2 className="section-heading">Project Registry</h2>
-            </div>
-            {!loading && <span className="site-count-pill">{sites.length} Active Sites</span>}
-          </div>
-
-          {/* --- DESKTOP TABLE VIEW --- */}
-          <div className="master-table-container desktop-view">
-            <table className="master-table">
+      <section className="acc-card">
+        <div className="acc-card-header">
+          <h3 style={{ margin: 0 }}>Active Site Tracking</h3>
+        </div>
+        <div className="acc-card-body" style={{ paddingTop: 0 }}>
+          {loading ? (
+            <SkeletonBox />
+          ) : (
+            <table className="acc-table">
               <thead>
                 <tr>
-                  <th style={{ width: '80px' }}>Sr No</th>
-                  <th>Site Name</th>
-                  <th>Site Engineer</th>
-                  <th className="text-right">Pending (Dealers)</th>
-                  <th className="text-right">Total Spend (Cumulative)</th>
+                  <th style={{ width: 64 }}>Sr No</th>
+                  <th>Site Name / Location</th>
+                  <th>Supervisor</th>
+                  <th>Status</th>
+                  <th className="acc-right">Total Spend</th>
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
-                  <tr><td colSpan="5"><SkeletonBox /></td></tr>
+                {sites.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: "center", color: "#64748b" }}>
+                      No active sites available.
+                    </td>
+                  </tr>
                 ) : (
-                  sites.map((site, index) => (
-                    <tr key={site.id} onClick={() => navigate(`/accountant/site/${site.id}`)} style={{ cursor: 'pointer' }}>
-                      <td>{index + 1}</td>
-                      <td><strong style={{ color: '#2563eb' }}>{site.name}</strong></td>
-                      <td>{site.assignedEngineerName || "Not Assigned"}</td>
-                      <td className="text-right" style={{ color: '#dc2626', fontWeight: '700' }}>
-                        ₹ {(site.pendingBalance || 0).toLocaleString('en-IN')}
+                  sites.map((site, idx) => (
+                    <tr
+                      key={site.id}
+                      onClick={() => navigate(`/accountant/site/${site.id}`)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <td>{idx + 1}</td>
+                      <td>
+                        <strong>{site.name || "-"}</strong>
+                        <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                          {site.location || "Location not set"}
+                        </div>
                       </td>
-                      <td className="text-right" style={{ fontWeight: '900', color: '#1e293b', fontSize: '1rem' }}>
-                        ₹ {(site.realGrandTotal || 0).toLocaleString('en-IN')}
+                      <td>{site.assignedEngineerName || "Not assigned"}</td>
+                      <td>
+                        <span className="acc-tag">
+                          {site.status || (site.isActive === false ? "Inactive" : "In Progress")}
+                        </span>
                       </td>
+                      <td className="acc-right">₹ {(site.totalSpend || 0).toLocaleString("en-IN")}</td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
-          </div>
-
-          {/* --- MOBILE CARD VIEW --- */}
-          <div className="mobile-view-list">
-            {loading ? (
-              <SkeletonBox />
-            ) : (
-              sites.map((site, index) => (
-                <div key={site.id} className="site-mobile-card" onClick={() => navigate(`/accountant/site/${site.id}`)}>
-                  <div className="card-top">
-                    <span className="site-index">#{index + 1}</span>
-                    <h3 className="site-name-mobile">{site.name}</h3>
-                  </div>
-                  <div className="card-details">
-                    <div className="detail-row">
-                      <span className="label">Engineer:</span>
-                      <span className="val">{site.assignedEngineerName || "N/A"}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="label">Pending Payments:</span>
-                      <span className="val" style={{color: '#dc2626'}}>₹ {(site.pendingBalance || 0).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="detail-row total-spend-row">
-                      <span className="label">Grand Total Spend:</span>
-                      <span className="val">₹ {(site.realGrandTotal || 0).toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-                  <div className="card-arrow">View Site MIS →</div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-      </div>
-
-      <style>{`
-        .mobile-view-list { display: none !important; }
-        .desktop-view { display: block !important; }
-        
-        @media (max-width: 768px) {
-          .desktop-view { display: none !important; }
-          .mobile-view-list { display: block !important; padding: 10px; }
-          .site-mobile-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 20px; margin-bottom: 15px; }
-          .total-spend-row { border-top: 1px dashed #e2e8f0; padding-top: 8px; margin-top: 8px; }
-          .total-spend-row .val { color: #2563eb; font-weight: 800; }
-        }
-        .text-right { text-align: right; }
-      `}</style>
-    </Layout>
+          )}
+        </div>
+      </section>
+    </AccountantShell>
   );
 }
-
-export default AccountantDashboard;

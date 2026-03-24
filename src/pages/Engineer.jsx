@@ -1,7 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 
 import Layout from "../components/Layout";
 import { logout } from "../utils/logout";
@@ -17,6 +15,11 @@ import {
   formatMarathiWeekFromDate,
   formatMarathiWeekFromWeekKey,
 } from "../utils/marathiWeekFormat";
+import {
+  formatDate,
+  formatDateTime,
+} from "../utils/engineerReportFormatters";
+import { generateEngineerReportPDF } from "../utils/pdf/engineerReportPdf";
 
 import {
   collection,
@@ -73,27 +76,11 @@ function safeToDate(v) {
 }
 
 function fmtDate(v) {
-  const d = safeToDate(v);
-  if (!d) return "-";
-  return d
-    .toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
-    .replace(/ /g, "-");
+  return formatDate(v);
 }
 
 function fmtDateTime(v) {
-  const d = safeToDate(v);
-  if (!d) return "-";
-  return d.toLocaleString("en-GB");
-}
-
-function fileStamp() {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+  return formatDateTime(v);
 }
 
 function startOfDay(date = new Date()) {
@@ -791,54 +778,23 @@ function Engineer() {
   const exportReportPdf = async () => {
     try {
       setReportExporting(true);
-
-      const pdf = new jsPDF("p", "mm", "a4");
-      pdf.setFontSize(18);
-      pdf.text("RP Construction", 14, 16);
-      pdf.setFontSize(11);
-      pdf.text("Engineer Task Report", 14, 23);
-      pdf.setFontSize(9);
-      pdf.text(`Engineer: ${engineerName}`, 14, 29);
-      pdf.text(`Generated: ${new Date().toLocaleString("en-GB")}`, 14, 34);
-      pdf.text(
-        `Filters: Status=${reportStatus}, Priority=${reportPriority}, Sort=${reportSort}`,
-        14,
-        39,
-      );
-
-      autoTable(pdf, {
-        startY: 45,
-        head: [
-          [
-            "Title",
-            "Site",
-            "Week",
-            "Status",
-            "Priority",
-            "Day",
-            "Due Date",
-            "Updated",
-            "Latest Pending Reason",
-            "Reason Note",
-          ],
-        ],
-        body: reportTasks.map((t) => [
-          t.title || "-",
-          t.siteName || siteMap.get(t.siteId)?.name || "-",
-          formatMarathiWeekFromDate(t.expectedCompletionDate),
-          t.status || "PENDING",
-          t.priority || "NORMAL",
-          t.dayName || "-",
-          fmtDate(t.expectedCompletionDate),
-          fmtDateTime(t.updatedAt),
-          getLatestPendingReason(t)?.reasonType || "-",
-          getLatestPendingReason(t)?.note || "-",
-        ]),
-        styles: { fontSize: 8, cellPadding: 2 },
-        headStyles: { fillColor: [15, 23, 42] },
+      const pdfTasks = reportTasks.map((task) => ({
+        ...task,
+        weekKey: task.weekKey || task.week || null,
+        day: task.day || task.dayName || null,
+        siteName: task.siteName || siteMap.get(task.siteId)?.name || "-",
+        latestPendingReason: getLatestPendingReason(task)?.reasonType || "-",
+      }));
+      console.log("PDF TASK DATA:", pdfTasks);
+      await generateEngineerReportPDF({
+        engineerName,
+        filters: {
+          status: reportStatus,
+          priority: reportPriority,
+          sort: reportSort,
+        },
+        tasks: pdfTasks,
       });
-
-      pdf.save(`rp-construction_engineer_report_${fileStamp()}.pdf`);
       showSuccess("PDF report exported");
     } catch (e) {
       showError(e, "Failed to export PDF");

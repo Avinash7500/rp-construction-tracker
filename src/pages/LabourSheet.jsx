@@ -1,349 +1,319 @@
-// src/pages/LabourSheet.jsx
-import React, { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+﻿import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
+  collection,
   doc,
   getDoc,
-  collection,
-  query,
-  where,
   getDocs,
-  writeBatch,
+  query,
   serverTimestamp,
+  updateDoc,
+  where,
+  writeBatch,
 } from "firebase/firestore";
+import AccountantShell from "../components/AccountantShell";
 import { db } from "../firebase/firebaseConfig";
-import Layout from "../components/Layout";
-import Button from "../components/Button";
-import { showSuccess } from "../utils/showSuccess";
 import { showError } from "../utils/showError";
+import { showSuccess } from "../utils/showSuccess";
+import { generateLabourPdf } from "../utils/pdf/labourPdf";
 
-const MARATHI_DAYS = [
-  "सोमवार",
-  "मंगळवार",
-  "बुधवार",
-  "गुरुवार",
-  "शुक्रवार",
-  "शनिवार",
-  "रविवार",
-];
+const DAY_ROWS = ["à¤¸à¥‹à¤®à¤µà¤¾à¤°", "à¤®à¤‚à¤—à¤³à¤µà¤¾à¤°", "à¤¬à¥à¤§à¤µà¤¾à¤°", "à¤—à¥à¤°à¥à¤µà¤¾à¤°", "à¤¶à¥à¤•à¥à¤°à¤µà¤¾à¤°", "à¤¶à¤¨à¤¿à¤µà¤¾à¤°", "à¤°à¤µà¤¿à¤µà¤¾à¤°"];
 
-function LabourSheet() {
-  const { siteId, workType, weekKey: urlWeekKey } = useParams(); // 🔥 Added urlWeekKey
+function createEmptyRows() {
+  return DAY_ROWS.map((dayName) => ({
+    id: "",
+    dayName,
+    details: "",
+    mistriCount: 0,
+    mistriRate: 0,
+    labourCount: 0,
+    labourRate: 0,
+  }));
+}
+
+function rowTotal(row) {
+  return (row.mistriCount || 0) * (row.mistriRate || 0)
+    + (row.labourCount || 0) * (row.labourRate || 0);
+}
+
+export default function LabourSheet() {
+  const { siteId, weekKey, workType } = useParams();
   const navigate = useNavigate();
-  const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
-  const [isHistoryView, setIsHistoryView] = useState(false); // 🔥 History Mode State
+  const [site, setSite] = useState(null);
+  const [rows, setRows] = useState(createEmptyRows());
 
-  const [rows, setRows] = useState(
-    MARATHI_DAYS.map((day) => ({
-      dayName: day,
-      details: "",
-      mistriCount: 0,
-      mistriRate: 0,
-      labourCount: 0,
-      labourRate: 0,
-    })),
-  );
+  const effectiveWeekKey = weekKey || site?.currentWeekKey || "";
+  const effectiveWorkType = workType || "GENERAL";
 
-  useEffect(() => {
-    const loadSheetData = async () => {
-      try {
-        const siteSnap = await getDoc(doc(db, "sites", siteId));
-        if (!siteSnap.exists()) return;
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const siteSnap = await getDoc(doc(db, "sites", siteId));
+      if (!siteSnap.exists()) {
+        setSite(null);
+        return;
+      }
+      const siteData = { id: siteSnap.id, ...siteSnap.data() };
+      setSite(siteData);
 
-        const siteData = siteSnap.data();
-        setSite({ id: siteSnap.id, ...siteData });
-
-        // 🔥 Determine which week to load
-        const targetWeek = urlWeekKey || siteData.currentWeekKey;
-        if (urlWeekKey && urlWeekKey !== siteData.currentWeekKey) {
-          setIsHistoryView(true);
-          setIsLocked(true); // Always lock historical data
-        }
-
-        const q = query(
+      const targetWeek = weekKey || siteData.currentWeekKey;
+      const snap = await getDocs(
+        query(
           collection(db, "labour_entries"),
           where("siteId", "==", siteId),
           where("weekKey", "==", targetWeek),
-          where("workType", "==", workType),
-        );
-        const snap = await getDocs(q);
+        ),
+      );
 
-        if (!snap.empty) {
-          const existingData = snap.docs.map((d) => d.data());
-
-          // Check for 30-day lock on active sheets only
-          if (!urlWeekKey) {
-            const lastSaved = existingData[0]?.updatedAt?.toDate();
-            if (lastSaved) {
-              const diffDays = Math.ceil(
-                Math.abs(new Date() - lastSaved) / (1000 * 60 * 60 * 24),
-              );
-              if (diffDays > 30) setIsLocked(true);
-            }
-          }
-
-          const mergedRows = MARATHI_DAYS.map((day) => {
-            const found = existingData.find((d) => d.dayName === day);
-            return (
-              found || {
-                dayName: day,
-                details: "",
-                mistriCount: 0,
-                mistriRate: 0,
-                labourCount: 0,
-                labourRate: 0,
-              }
-            );
-          });
-          setRows(mergedRows);
-        } else {
-          // Reset rows if no data found for historical week
-          if (urlWeekKey) {
-            setRows(
-              MARATHI_DAYS.map((day) => ({
-                dayName: day,
-                details: "No data recorded",
-                mistriCount: 0,
-                mistriRate: 0,
-                labourCount: 0,
-                labourRate: 0,
-              })),
-            );
-          }
-        }
-      } catch (e) {
-        showError(e, "Error loading sheet");
-      } finally {
-        setLoading(false);
+      if (snap.empty) {
+        setRows(createEmptyRows());
+        return;
       }
-    };
-    loadSheetData();
-  }, [siteId, workType, urlWeekKey]);
 
-  const handleInputChange = (index, field, value) => {
-    if (isLocked) return;
-    const updatedRows = [...rows];
-    if (field !== "details") {
-      updatedRows[index][field] = value === "" ? 0 : parseFloat(value);
-    } else {
-      updatedRows[index][field] = value;
+      const mapByDay = {};
+      snap.docs.forEach((d) => {
+        const row = { id: d.id, ...d.data() };
+        mapByDay[row.dayName] = row;
+      });
+
+      const merged = DAY_ROWS.map((day) => mapByDay[day] || {
+        id: "",
+        dayName: day,
+        details: "",
+        mistriCount: 0,
+        mistriRate: 0,
+        labourCount: 0,
+        labourRate: 0,
+      });
+      setRows(merged);
+    } catch (e) {
+      showError(e, "Failed to load labour sheet");
+    } finally {
+      setLoading(false);
     }
-    setRows(updatedRows);
   };
 
-  const grandTotal = useMemo(() => {
-    return rows.reduce(
-      (acc, row) =>
-        acc +
-        row.mistriCount * row.mistriRate +
-        row.labourCount * row.labourRate,
-      0,
-    );
-  }, [rows]);
+  useEffect(() => {
+    loadData();
+  }, [siteId, weekKey, workType]);
 
-  const saveSheet = async () => {
-    if (isLocked) return;
+  const updateRow = (index, field, value) => {
+    const next = [...rows];
+    next[index] = {
+      ...next[index],
+      [field]: ["details"].includes(field) ? value : Number(value || 0),
+    };
+    setRows(next);
+  };
+
+  const weeklyTotal = useMemo(() => rows.reduce((sum, row) => sum + rowTotal(row), 0), [rows]);
+
+  const handleSave = async () => {
+    if (!site) return;
     try {
       setSaving(true);
       const batch = writeBatch(db);
-      const weekKey = site.currentWeekKey;
-
-      rows.forEach((row) => {
-        const docId = `${siteId}_${weekKey}_${workType}_${row.dayName}`;
-        const docRef = doc(db, "labour_entries", docId);
-        batch.set(
-          docRef,
-          { ...row, siteId, weekKey, workType, updatedAt: serverTimestamp() },
-          { merge: true },
-        );
+      rows.forEach((row, index) => {
+        const docId = row.id || `${siteId}_${effectiveWeekKey}_${effectiveWorkType}_${index}`;
+        const ref = doc(db, "labour_entries", docId);
+        batch.set(ref, {
+          siteId,
+          weekKey: effectiveWeekKey,
+          workType: effectiveWorkType,
+          dayName: row.dayName,
+          details: row.details || "",
+          mistriCount: Number(row.mistriCount || 0),
+          mistriRate: Number(row.mistriRate || 0),
+          labourCount: Number(row.labourCount || 0),
+          labourRate: Number(row.labourRate || 0),
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
       });
-
       await batch.commit();
-      showSuccess("Sheet saved successfully ✅");
-      navigate(`/accountant/site/${siteId}/labour`);
+      showSuccess("Labour sheet saved");
+      await loadData();
     } catch (e) {
-      showError(e, "Save failed");
+      showError(e, "Failed to save labour sheet");
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading)
+  const handleWeekCompleted = async () => {
+    if (!site) return;
+    try {
+      const [year, weekPart] = String(effectiveWeekKey).split("-W");
+      const next = `${year}-W${String(Number(weekPart || 0) + 1).padStart(2, "0")}`;
+      const [nextLabourSnap, nextMaterialSnap] = await Promise.all([
+        getDocs(
+          query(
+            collection(db, "labour_entries"),
+            where("siteId", "==", siteId),
+            where("weekKey", "==", next),
+          ),
+        ),
+        getDocs(
+          query(
+            collection(db, "material_entries"),
+            where("siteId", "==", siteId),
+            where("weekKey", "==", next),
+          ),
+        ),
+      ]);
+
+      const initBatch = writeBatch(db);
+      if (nextLabourSnap.empty) {
+        const labourInitRef = doc(collection(db, "labour_entries"));
+        initBatch.set(labourInitRef, {
+          siteId,
+          weekKey: next,
+          workType: "GENERAL",
+          dayName: "à¤¸à¥‹à¤®à¤µà¤¾à¤°",
+          details: "",
+          mistriCount: 0,
+          mistriRate: 0,
+          labourCount: 0,
+          labourRate: 0,
+          isPlaceholder: true,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+      if (nextMaterialSnap.empty) {
+        const materialInitRef = doc(collection(db, "material_entries"));
+        initBatch.set(materialInitRef, {
+          siteId,
+          weekKey: next,
+          date: new Date().toISOString().slice(0, 10),
+          details: "",
+          dealerId: "",
+          dealerName: "",
+          qty: 0,
+          rate: 0,
+          billAmount: 0,
+          isPlaceholder: true,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+      await initBatch.commit();
+
+      await updateDoc(doc(db, "sites", siteId), {
+        currentWeekKey: next,
+        totalLabourSpend: weeklyTotal,
+        updatedAt: serverTimestamp(),
+      });
+      showSuccess(`Week completed. Next week: ${next}`);
+      navigate(`/accountant/site/${siteId}`);
+    } catch (e) {
+      showError(e, "Failed to complete week");
+    }
+  };
+
+  const handlePdf = async () => {
+    await generateLabourPdf({
+      siteName: site?.name || "-",
+      weekKey: effectiveWeekKey,
+      engineerName: site?.assignedEngineerName || "-",
+      rows,
+    });
+  };
+
+  if (loading) {
     return (
-      <Layout>
-        <div style={{ padding: "20px" }}>Loading {workType} Data...</div>
-      </Layout>
+      <AccountantShell title="Labour Weekly Sheet">
+        <div>Loading...</div>
+      </AccountantShell>
     );
+  }
+
+  if (!site) {
+    return (
+      <AccountantShell title="Labour Weekly Sheet">
+        <div>Site not found.</div>
+      </AccountantShell>
+    );
+  }
 
   return (
-    <Layout>
-      <div className="admin-dashboard labour-page-container accountant-theme">
-        <div className="sticky-back-header-v5">
-          <button className="btn-back-pro" onClick={() => navigate(-1)}>
-            <span className="back-icon">←</span>
-            <div className="back-text">
-              <span className="back-label">Back</span>
-              <span className="back-sub">
-                {isHistoryView ? "History" : "Index"}
-              </span>
-            </div>
+    <AccountantShell
+      title={`Labour Weekly Sheet (${effectiveWeekKey})`}
+      subtitle={`${site.name} | à¤®à¤œà¥‚à¤° à¤–à¤°à¥à¤š à¤Ÿà¥à¤°à¥…à¤•à¤¿à¤‚à¤—`}
+      actions={(
+        <>
+          <button className="btn-muted-action" onClick={() => navigate(`/accountant/site/${siteId}`)}>
+            Back
           </button>
-          <div
-            className="engineer-badge-pill"
-            style={{ background: isHistoryView ? "#64748b" : "" }}
-          >
-            <div className="badge-content-v5">
-              <span className="eng-label-v5">
-                {isHistoryView ? `HISTORY: ${urlWeekKey}` : "लेबर शीट"}{" "}
-                {isLocked && !isHistoryView && "(LOCKED)"}
-              </span>
-              <h2 className="eng-name-v5">{workType}</h2>
-            </div>
-          </div>
+          <button className="btn-primary-v5" onClick={handlePdf}>
+            Generate PDF
+          </button>
+        </>
+      )}
+    >
+      <section className="acc-card">
+        <div className="acc-card-header">
+          <h3 style={{ margin: 0 }}>Labour Entries</h3>
         </div>
-
-        {isHistoryView && (
-          <div
-            style={{
-              background: "#f0f9ff",
-              color: "#0369a1",
-              padding: "12px",
-              borderRadius: "10px",
-              marginBottom: "15px",
-              textAlign: "center",
-              border: "1px solid #bae6fd",
-              fontWeight: "bold",
-            }}
-          >
-            👁️ Viewing Historical Records (Read Only)
-          </div>
-        )}
-
-        {/* ... Rest of your existing Table UI (Desktop/Mobile) remains the same ... */}
-        {/* Note: All inputs already have disabled={isLocked}, so they will correctly be read-only in history view */}
-
-        <div className="master-table-container desktop-view">
-          <table className="master-table">
+        <div className="acc-card-body" style={{ paddingTop: 0, overflowX: "auto" }}>
+          <table className="acc-table">
             <thead>
               <tr>
-                <th style={{ width: "120px" }}>वार (Day)</th>
-                <th>तपशील (Details)</th>
-                <th style={{ width: "80px" }}>मिस्त्री</th>
-                <th style={{ width: "100px" }}>पगार (Rate)</th>
-                <th style={{ width: "80px" }}>लेबर</th>
-                <th style={{ width: "100px" }}>पगार (Rate)</th>
-                <th style={{ width: "120px", textAlign: "right" }}>
-                  एकूण (Total)
-                </th>
+                <th>à¤µà¤¾à¤°</th>
+                <th>à¤¤à¤ªà¤¶à¥€à¤²</th>
+                <th className="acc-right">Mistri Count</th>
+                <th className="acc-right">Mistri Rate</th>
+                <th className="acc-right">Labour Count</th>
+                <th className="acc-right">Labour Rate</th>
+                <th className="acc-right">Total</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, index) => {
-                const dayTotal =
-                  row.mistriCount * row.mistriRate +
-                  row.labourCount * row.labourRate;
-                return (
-                  <tr key={index}>
-                    <td>
-                      <strong>{row.dayName}</strong>
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        disabled={isLocked}
-                        className="sheet-input-text"
-                        value={row.details}
-                        onChange={(e) =>
-                          handleInputChange(index, "details", e.target.value)
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        disabled={isLocked}
-                        className="sheet-input-num"
-                        value={row.mistriCount}
-                        onChange={(e) =>
-                          handleInputChange(
-                            index,
-                            "mistriCount",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        disabled={isLocked}
-                        className="sheet-input-num"
-                        value={row.mistriRate}
-                        onChange={(e) =>
-                          handleInputChange(index, "mistriRate", e.target.value)
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        disabled={isLocked}
-                        className="sheet-input-num"
-                        value={row.labourCount}
-                        onChange={(e) =>
-                          handleInputChange(
-                            index,
-                            "labourCount",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        disabled={isLocked}
-                        className="sheet-input-num"
-                        value={row.labourRate}
-                        onChange={(e) =>
-                          handleInputChange(index, "labourRate", e.target.value)
-                        }
-                      />
-                    </td>
-                    <td style={{ textAlign: "right", fontWeight: "bold" }}>
-                      ₹ {dayTotal.toLocaleString("en-IN")}
-                    </td>
-                  </tr>
-                );
-              })}
+              {rows.map((row, idx) => (
+                <tr key={row.dayName}>
+                  <td>{row.dayName}</td>
+                  <td>
+                    <input
+                      className="sheet-input-text"
+                      value={row.details || ""}
+                      onChange={(e) => updateRow(idx, "details", e.target.value)}
+                    />
+                  </td>
+                  <td className="acc-right">
+                    <input className="sheet-input-num" type="number" value={row.mistriCount || 0} onChange={(e) => updateRow(idx, "mistriCount", e.target.value)} />
+                  </td>
+                  <td className="acc-right">
+                    <input className="sheet-input-num" type="number" value={row.mistriRate || 0} onChange={(e) => updateRow(idx, "mistriRate", e.target.value)} />
+                  </td>
+                  <td className="acc-right">
+                    <input className="sheet-input-num" type="number" value={row.labourCount || 0} onChange={(e) => updateRow(idx, "labourCount", e.target.value)} />
+                  </td>
+                  <td className="acc-right">
+                    <input className="sheet-input-num" type="number" value={row.labourRate || 0} onChange={(e) => updateRow(idx, "labourRate", e.target.value)} />
+                  </td>
+                  <td className="acc-right">â‚¹ {rowTotal(row).toLocaleString("en-IN")}</td>
+                </tr>
+              ))}
             </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={6} className="acc-right" style={{ fontWeight: 800 }}>Weekly Total</td>
+                <td className="acc-right" style={{ fontWeight: 800 }}>â‚¹ {weeklyTotal.toLocaleString("en-IN")}</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
+      </section>
 
-        <div className="sheet-actions-footer">
-          <div className="footer-grand-total">
-            <span className="total-label">SHEET TOTAL:</span>
-            <span className="total-amount">
-              ₹ {grandTotal.toLocaleString("en-IN")}
-            </span>
-          </div>
-          {!isHistoryView && !isLocked && (
-            <Button
-              loading={saving}
-              onClick={saveSheet}
-              className="save-btn-mobile"
-            >
-              💾 Save Weekly Sheet
-            </Button>
-          )}
-        </div>
-      </div>
-      <style>{/* Keep your existing styles */}</style>
-    </Layout>
+      <section style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <button className="btn-muted-action" onClick={handleWeekCompleted}>
+          Week Completed
+        </button>
+        <button className="btn-primary-v5" onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : "Save"}
+        </button>
+      </section>
+    </AccountantShell>
   );
 }
 
-export default LabourSheet;
+

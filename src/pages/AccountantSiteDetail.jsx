@@ -1,526 +1,401 @@
-// src/pages/AccountantSiteDetail.jsx
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
-  doc,
-  getDoc,
   collection,
   getDocs,
   query,
   where,
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
 } from "firebase/firestore";
-import { db, auth } from "../firebase/firebaseConfig";
-import { signOut } from "firebase/auth";
-import Layout from "../components/Layout";
-import Button from "../components/Button";
+import AccountantShell from "../components/AccountantShell";
 import SkeletonBox from "../components/SkeletonBox";
+import { db } from "../firebase/firebaseConfig";
 import { showError } from "../utils/showError";
 import { showSuccess } from "../utils/showSuccess";
+import { formatMarathiWeekFromWeekKey } from "../utils/marathiWeekFormat";
+import { generateSiteSummaryPdf } from "../utils/pdf/siteSummaryPdf";
 
-// Helper to format: 2026-W06 -> "2 Week - Feb"
-const formatWeekLabel = (weekKey) => {
-  if (!weekKey) return "N/A";
-  try {
-    const [year, weekPart] = weekKey.split("-W");
-    const weekNum = parseInt(weekPart);
-    const monthNames = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
+function computeLabourAmount(row) {
+  return (row.mistriCount || 0) * (row.mistriRate || 0)
+    + (row.labourCount || 0) * (row.labourRate || 0);
+}
 
-    const weekOfMonth = weekNum % 4 || 4;
-    const monthIndex = Math.floor((weekNum - 1) / 4.34);
-    return `${weekOfMonth} Week - ${monthNames[monthIndex % 12]}`;
-  } catch (e) {
-    return weekKey;
-  }
-};
+function computeMaterialBill(row) {
+  if (typeof row.billAmount === "number") return row.billAmount;
+  return (row.qty || 0) * (row.rate || 0);
+}
 
-// Helper to calculate date range for the "Week Period" column
-const getWeekDateRange = (weekKey) => {
-  if (!weekKey) return "N/A";
-  try {
-    const [year, weekPart] = weekKey.split("-W");
-    const weekNum = parseInt(weekPart);
-    const janFirst = new Date(year, 0, 1);
-    const days = (weekNum - 1) * 7;
-    const start = new Date(year, 0, 1 + days);
-    const end = new Date(year, 0, 1 + days + 6);
-    const options = { month: "short", day: "2-digit" };
-    return `${start.toLocaleDateString("en-US", options)} - ${end.toLocaleDateString("en-US", options)}`;
-  } catch (e) {
-    return "Date Range N/A";
-  }
-};
-
-function AccountantSiteDetail() {
-  const { siteId } = useParams();
+export default function AccountantSiteDetail() {
   const navigate = useNavigate();
-  const [site, setSite] = useState(null);
+  const { siteId } = useParams();
   const [loading, setLoading] = useState(true);
+  const [site, setSite] = useState(null);
+  const [labourWeekly, setLabourWeekly] = useState([]);
+  const [materialWeekly, setMaterialWeekly] = useState([]);
+  const [labourTotal, setLabourTotal] = useState(0);
+  const [materialTotal, setMaterialTotal] = useState(0);
+  const [currentWeekTotals, setCurrentWeekTotals] = useState({ labour: 0, material: 0 });
 
-  // States for calculations
-  const [weeklyTotals, setWeeklyTotals] = useState({ labour: 0, material: 0 });
-  const [projectTotals, setProjectTotals] = useState({
-    labour: 0,
-    material: 0,
-  }); // 🔥 Cumulative State
-
-  // History states
-  const [labourHistory, setLabourHistory] = useState([]);
-  const [materialHistory, setMaterialHistory] = useState([]);
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      showSuccess("Logged out successfully");
-      navigate("/login");
-    } catch (e) {
-      showError(e, "Logout failed");
-    }
-  };
-
-  const loadData = async () => {
+  const loadDetail = async () => {
     try {
       setLoading(true);
-      // 1. Fetch Site Info
       const siteSnap = await getDoc(doc(db, "sites", siteId));
-      if (!siteSnap.exists()) return;
-      const siteData = siteSnap.data();
-      setSite({ id: siteSnap.id, ...siteData });
+      if (!siteSnap.exists()) {
+        setSite(null);
+        return;
+      }
+      const siteData = { id: siteSnap.id, ...siteSnap.data() };
+      setSite(siteData);
 
-      const activeWeekKey = siteData.currentWeekKey;
-
-      // 2. Fetch ALL data for site-wide cumulative and history
-      const [allLabSnap, allMatSnap] = await Promise.all([
-        getDocs(
-          query(
-            collection(db, "labour_entries"),
-            where("siteId", "==", siteId),
-          ),
-        ),
-        getDocs(
-          query(
-            collection(db, "material_entries"),
-            where("siteId", "==", siteId),
-          ),
-        ),
+      const [labourSnap, materialSnap, paymentSnap] = await Promise.all([
+        getDocs(query(collection(db, "labour_entries"), where("siteId", "==", siteId))),
+        getDocs(query(collection(db, "material_entries"), where("siteId", "==", siteId))),
+        getDocs(query(collection(db, "dealer_payments"), where("siteId", "==", siteId))),
       ]);
 
-      // 3. Process Labour Data
-      let wLab = 0; // Weekly total
-      let pLab = 0; // Project total
-      const labMap = {};
+      const labourRows = labourSnap.docs.map((d) => d.data());
+      const materialRows = materialSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const paymentRows = paymentSnap.docs.map((d) => d.data());
 
-      allLabSnap.docs.forEach((doc) => {
-        const d = doc.data();
-        const rowAmount =
-          d.mistriCount * d.mistriRate + d.labourCount * d.labourRate;
+      const paidByMaterialEntry = paymentRows.reduce((acc, p) => {
+        const id = p.materialEntryId || "";
+        if (!id) return acc;
+        acc[id] = (acc[id] || 0) + (p.paymentAmount || 0);
+        return acc;
+      }, {});
 
-        pLab += rowAmount;
-        if (d.weekKey === activeWeekKey) wLab += rowAmount;
-
-        // Grouping for History Table
-        if (!labMap[d.weekKey])
-          labMap[d.weekKey] = {
-            weekKey: d.weekKey,
-            total: 0,
-            dateRange: getWeekDateRange(d.weekKey),
+      const labourMap = {};
+      let labourSum = 0;
+      labourRows.forEach((row) => {
+        if (row.isPlaceholder) return;
+        const weekKey = row.weekKey || "UNKNOWN";
+        const spend = computeLabourAmount(row);
+        labourSum += spend;
+        if (!labourMap[weekKey]) {
+          labourMap[weekKey] = {
+            weekKey,
+            totalEntries: 0,
+            totalLabourSpend: 0,
           };
-        labMap[d.weekKey].total += rowAmount;
+        }
+        labourMap[weekKey].totalEntries += 1;
+        labourMap[weekKey].totalLabourSpend += spend;
       });
 
-      // 4. Process Material Data
-      let wMat = 0;
-      let pMat = 0;
-      const matMap = {};
-
-      allMatSnap.docs.forEach((doc) => {
-        const d = doc.data();
-        const rowAmount = d.qty * d.rate;
-
-        pMat += rowAmount;
-        if (d.weekKey === activeWeekKey) wMat += rowAmount;
-
-        // Grouping for History Table
-        if (!matMap[d.weekKey])
-          matMap[d.weekKey] = {
-            weekKey: d.weekKey,
-            total: 0,
-            dateRange: getWeekDateRange(d.weekKey),
+      const materialMap = {};
+      let materialSum = 0;
+      materialRows.forEach((row) => {
+        if (row.isPlaceholder) return;
+        const weekKey = row.weekKey || "UNKNOWN";
+        const bill = computeMaterialBill(row);
+        const paid = typeof paidByMaterialEntry[row.id] === "number"
+          ? paidByMaterialEntry[row.id]
+          : (row.paidAmount || 0);
+        materialSum += bill;
+        if (!materialMap[weekKey]) {
+          materialMap[weekKey] = {
+            weekKey,
+            deliveries: 0,
+            totalBill: 0,
+            totalPaid: 0,
+            pending: 0,
           };
-        matMap[d.weekKey].total += rowAmount;
+        }
+        materialMap[weekKey].deliveries += 1;
+        materialMap[weekKey].totalBill += bill;
+        materialMap[weekKey].totalPaid += paid;
+        materialMap[weekKey].pending += (bill - paid);
       });
 
-      setWeeklyTotals({ labour: wLab, material: wMat });
-      setProjectTotals({ labour: pLab, material: pMat });
-      setLabourHistory(
-        Object.values(labMap).sort((a, b) =>
-          b.weekKey.localeCompare(a.weekKey),
-        ),
+      setLabourTotal(labourSum);
+      setMaterialTotal(materialSum);
+      if (!labourMap[siteData.currentWeekKey]) {
+        labourMap[siteData.currentWeekKey] = { weekKey: siteData.currentWeekKey, totalEntries: 0, totalLabourSpend: 0 };
+      }
+      if (!materialMap[siteData.currentWeekKey]) {
+        materialMap[siteData.currentWeekKey] = { weekKey: siteData.currentWeekKey, deliveries: 0, totalBill: 0, totalPaid: 0, pending: 0 };
+      }
+      setCurrentWeekTotals({
+        labour: labourMap[siteData.currentWeekKey]?.totalLabourSpend || 0,
+        material: materialMap[siteData.currentWeekKey]?.totalBill || 0,
+      });
+      setLabourWeekly(
+        Object.values(labourMap).sort((a, b) => b.weekKey.localeCompare(a.weekKey)),
       );
-      setMaterialHistory(
-        Object.values(matMap).sort((a, b) =>
-          b.weekKey.localeCompare(a.weekKey),
-        ),
+      setMaterialWeekly(
+        Object.values(materialMap).sort((a, b) => b.weekKey.localeCompare(a.weekKey)),
       );
     } catch (e) {
-      console.error("MIS Load Error:", e);
-      showError(e, "Failed to load financial data");
+      showError(e, "Failed to load site financial detail");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadDetail();
   }, [siteId]);
 
-  if (loading)
+  const grandTotal = useMemo(() => labourTotal + materialTotal, [labourTotal, materialTotal]);
+  const currentWeekGrand = useMemo(
+    () => (currentWeekTotals.labour || 0) + (currentWeekTotals.material || 0),
+    [currentWeekTotals],
+  );
+
+  const exportSiteSummaryPdf = async () => {
+    await generateSiteSummaryPdf({
+      siteName: site?.name || "-",
+      engineerName: site?.assignedEngineerName || "-",
+      currentWeekKey: site?.currentWeekKey || "",
+      totals: {
+        labour: labourTotal,
+        material: materialTotal,
+        grand: grandTotal,
+      },
+      weekly: {
+        labour: currentWeekTotals.labour || 0,
+        material: currentWeekTotals.material || 0,
+        grand: currentWeekGrand,
+      },
+      labourHistory: labourWeekly,
+      materialHistory: materialWeekly,
+    });
+  };
+
+  const createNewMaterialWeekSheet = async () => {
+    if (!site?.currentWeekKey) return;
+    try {
+      const existing = await getDocs(
+        query(
+          collection(db, "material_entries"),
+          where("siteId", "==", siteId),
+          where("weekKey", "==", site.currentWeekKey),
+        ),
+      );
+      if (existing.empty) {
+        const initRef = doc(collection(db, "material_entries"));
+        await setDoc(initRef, {
+          siteId,
+          weekKey: site.currentWeekKey,
+          date: new Date().toISOString().slice(0, 10),
+          details: "",
+          dealerId: "",
+          dealerName: "",
+          qty: 0,
+          rate: 0,
+          billAmount: 0,
+          isPlaceholder: true,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+      showSuccess("Material week is ready");
+      navigate(`/accountant/site/${siteId}/material/${encodeURIComponent(site.currentWeekKey)}`);
+    } catch (e) {
+      showError(e, "Failed to open material week");
+    }
+  };
+
+  const createNewLabourWeekSheet = async () => {
+    if (!site?.currentWeekKey) return;
+    try {
+      const existing = await getDocs(
+        query(
+          collection(db, "labour_entries"),
+          where("siteId", "==", siteId),
+          where("weekKey", "==", site.currentWeekKey),
+        ),
+      );
+      if (existing.empty) {
+        const initRef = doc(collection(db, "labour_entries"));
+        await setDoc(initRef, {
+          siteId,
+          weekKey: site.currentWeekKey,
+          workType: "GENERAL",
+          dayName: "सोमवार",
+          details: "",
+          mistriCount: 0,
+          mistriRate: 0,
+          labourCount: 0,
+          labourRate: 0,
+          isPlaceholder: true,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+      showSuccess("Labour week is ready");
+      navigate(`/accountant/site/${siteId}/labour/${encodeURIComponent(site.currentWeekKey)}`);
+    } catch (e) {
+      showError(e, "Failed to open labour week");
+    }
+  };
+
+  if (loading) {
     return (
-      <Layout>
-        <div style={{ padding: "2rem" }}>
-          <SkeletonBox />
-        </div>
-      </Layout>
+      <AccountantShell title="Site Financial Detail">
+        <SkeletonBox />
+      </AccountantShell>
     );
+  }
+
+  if (!site) {
+    return (
+      <AccountantShell title="Site Financial Detail">
+        <section className="acc-card">
+          <div className="acc-card-body">Site not found.</div>
+        </section>
+      </AccountantShell>
+    );
+  }
 
   return (
-    <Layout>
-      <div className="admin-dashboard accountant-theme">
-        <div className="sticky-back-header-v5">
-          <button
-            className="btn-back-pro"
-            onClick={() => navigate("/accountant/dashboard")}
-          >
-            <span className="back-icon">←</span>
-            <div className="back-text">
-              <span className="back-label">Back to MIS</span>
-              <span className="back-sub">Site Selection</span>
-            </div>
+    <AccountantShell
+      title={`${site.name || "Site"} Financials`}
+      subtitle={`Current Week: ${formatMarathiWeekFromWeekKey(site.currentWeekKey)} | Status: ${site.status || (site.isActive === false ? "Inactive" : "In Progress" )}`}
+      actions={(
+        <>
+          <button className="btn-muted-action" onClick={() => navigate("/accountant/dashboard")}>
+            Back to Dashboard
           </button>
-
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <div className="engineer-badge-pill">
-              <div className="badge-content-v5">
-                <span className="eng-label-v5">Active Week</span>
-                <h2 className="eng-name-v5">
-                  {formatWeekLabel(site?.currentWeekKey)}
-                </h2>
-              </div>
+          <button className="btn-primary-v5" onClick={exportSiteSummaryPdf}>
+            Generate PDF
+          </button>
+          <button className="btn-muted-action" onClick={loadDetail}>
+            Refresh
+          </button>
+        </>
+      )}
+    >
+      <section className="acc-card">
+        <div className="acc-card-body" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontWeight: 700, color: "#475569" }}>Engineer</div>
+            <div style={{ marginTop: 6 }}>
+              <span className="acc-tag" style={{ background: "#d1fae5", color: "#065f46", fontSize: "0.84rem", padding: "6px 12px" }}>
+                {site.assignedEngineerName || "Not Assigned"}
+              </span>
             </div>
-            <button
-              className="btn-logout-v5"
-              onClick={handleLogout}
-              style={{
-                padding: "8px 15px",
-                borderRadius: "20px",
-                border: "1px solid #e2e8f0",
-                background: "white",
-                cursor: "pointer",
-                fontWeight: "bold",
-              }}
-            >
-              {" "}
-              Logout{" "}
-            </button>
+          </div>
+          <div style={{ fontSize: "0.85rem", color: "#64748b" }}>
+            Week Key: {site.currentWeekKey || "-"}
           </div>
         </div>
+      </section>
 
-        <div className="system-alerts-bar">
-          <div className="alert-content">
-            <span className="pulse-dot"></span>
-            <p>
-              <strong>Site:</strong> {site?.name} | <strong>Engineer:</strong>{" "}
-              {site?.assignedEngineerName}
-            </p>
-          </div>
-          <div className="alert-btns">
-            <button className="btn-muted-action" onClick={loadData}>
-              🔄 Refresh Summary
-            </button>
-          </div>
+      <h3 style={{ margin: 0, fontSize: "1.05rem" }}>Total Financial Summary</h3>
+      <section className="acc-grid-3">
+        <article className="acc-stat-card">
+          <div className="acc-stat-label">Overall Labour</div>
+          <div style={{ fontSize: "0.78rem", color: "#64748b" }}>Total project labour</div>
+          <div className="acc-stat-value">₹ {labourTotal.toLocaleString("en-IN")}</div>
+        </article>
+        <article className="acc-stat-card">
+          <div className="acc-stat-label">Overall Material</div>
+          <div style={{ fontSize: "0.78rem", color: "#64748b" }}>Total project material</div>
+          <div className="acc-stat-value">₹ {materialTotal.toLocaleString("en-IN")}</div>
+        </article>
+        <article className="acc-stat-card" style={{ background: "#2563eb", color: "#fff" }}>
+          <div className="acc-stat-label" style={{ color: "#dbeafe" }}>Project Grand Total</div>
+          <div className="acc-stat-value">₹ {grandTotal.toLocaleString("en-IN")}</div>
+        </article>
+      </section>
+
+      <h3 style={{ margin: 0, fontSize: "1.05rem" }}>Weekly Financial Summary</h3>
+      <section className="acc-grid-3">
+        <article className="acc-stat-card">
+          <div className="acc-stat-label">Labour Total</div>
+          <div style={{ fontSize: "0.78rem", color: "#64748b" }}>Spent this week</div>
+          <div className="acc-stat-value">₹ {(currentWeekTotals.labour || 0).toLocaleString("en-IN")}</div>
+        </article>
+        <article className="acc-stat-card">
+          <div className="acc-stat-label">Material Total</div>
+          <div style={{ fontSize: "0.78rem", color: "#64748b" }}>Spent this week</div>
+          <div className="acc-stat-value">₹ {(currentWeekTotals.material || 0).toLocaleString("en-IN")}</div>
+        </article>
+        <article className="acc-stat-card">
+          <div className="acc-stat-label">Grand Total (Weekly)</div>
+          <div className="acc-stat-value">₹ {currentWeekGrand.toLocaleString("en-IN")}</div>
+        </article>
+      </section>
+
+      <section className="acc-card">
+        <div className="acc-card-header">
+          <h3 style={{ margin: 0 }}>Labour Weekly History</h3>
+          <button className="btn-primary-v5" onClick={createNewLabourWeekSheet}>
+            Create New Week Labour Sheet
+          </button>
         </div>
-
-        {/* --- 🔥 PROJECT TOTAL SECTION (Overall Cumulative) --- */}
-        <h3 className="section-heading" style={{ margin: "1.5rem 0 1rem 0" }}>
-          Total Financial Summary
-        </h3>
-        <div
-          className="detail-grid"
-          style={{
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            display: "grid",
-            gap: "1.5rem",
-          }}
-        >
-          <div className="config-card-pro" style={{ background: "#f8fafc" }}>
-            <div className="card-header-v3">
-              <h3 className="card-heading-v3">Overall Labour</h3>
-            </div>
-            <div className="config-body-v3">
-              <div className="stat-item-v3">
-                <span className="stat-label">Total project labour</span>
-                <span className="stat-value" style={{ color: "#1e293b" }}>
-                  ₹ {projectTotals.labour.toLocaleString("en-IN")}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="config-card-pro" style={{ background: "#f8fafc" }}>
-            <div className="card-header-v3">
-              <h3 className="card-heading-v3">Overall Material</h3>
-            </div>
-            <div className="config-body-v3">
-              <div className="stat-item-v3">
-                <span className="stat-label">Total project material</span>
-                <span className="stat-value" style={{ color: "#1e293b" }}>
-                  ₹ {projectTotals.material.toLocaleString("en-IN")}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="config-card-pro"
-            style={{ borderLeft: "4px solid #2563eb", background: "#f0f7ff" }}
-          >
-            <div className="card-header-v3">
-              <h3 className="card-heading-v3">Project Grand Total</h3>
-            </div>
-            <div className="config-body-v3">
-              <div className="stat-item-v3">
-                <h2 style={{ color: "#2563eb", margin: 0 }}>
-                  ₹{" "}
-                  {(
-                    projectTotals.labour + projectTotals.material
-                  ).toLocaleString("en-IN")}
-                </h2>
-              </div>
-            </div>
-          </div>
+        <div className="acc-card-body" style={{ paddingTop: 0 }}>
+          <table className="acc-table">
+            <thead>
+              <tr>
+                <th>Week</th>
+                <th className="acc-right" style={{ width: 150 }}>Total Entries</th>
+                <th className="acc-right">Total Labour Spend</th>
+              </tr>
+            </thead>
+            <tbody>
+              {labourWeekly.length === 0 ? (
+                <tr>
+                  <td colSpan={3} style={{ textAlign: "center", color: "#64748b" }}>No labour entries found.</td>
+                </tr>
+              ) : labourWeekly.map((row) => (
+                <tr
+                  key={row.weekKey}
+                  onClick={() => navigate(`/accountant/site/${siteId}/labour/${encodeURIComponent(row.weekKey)}`)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <td>{formatMarathiWeekFromWeekKey(row.weekKey)}</td>
+                  <td className="acc-right">{row.totalEntries}</td>
+                  <td className="acc-right">₹ {row.totalLabourSpend.toLocaleString("en-IN")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      </section>
 
-        {/* --- WEEKLY SECTION --- */}
-        <h3 className="section-heading" style={{ margin: "1.5rem 0 1rem 0" }}>
-          Weekly Financial Summary
-        </h3>
-        <div
-          className="detail-grid"
-          style={{
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            display: "grid",
-            gap: "1.5rem",
-          }}
-        >
-          <div className="config-card-pro">
-            <div className="card-header-v3">
-              <h3 className="card-heading-v3">Labour Total</h3>
-            </div>
-            <div className="config-body-v3">
-              <div className="stat-item-v3">
-                <span className="stat-label">Spent this week</span>
-                <span className="stat-value">
-                  ₹ {weeklyTotals.labour.toLocaleString("en-IN")}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="config-card-pro">
-            <div className="card-header-v3">
-              <h3 className="card-heading-v3">Material Total</h3>
-            </div>
-            <div className="config-body-v3">
-              <div className="stat-item-v3">
-                <span className="stat-label">Spent this week</span>
-                <span className="stat-value">
-                  ₹ {weeklyTotals.material.toLocaleString("en-IN")}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="config-card-pro"
-            style={{ borderLeft: "4px solid var(--admin-success)" }}
-          >
-            <div className="card-header-v3">
-              <h3 className="card-heading-v3">Grand Total (Weekly)</h3>
-            </div>
-            <div className="config-body-v3">
-              <div className="stat-item-v3">
-                <h2 style={{ color: "var(--admin-blue)", margin: 0 }}>
-                  ₹{" "}
-                  {(weeklyTotals.labour + weeklyTotals.material).toLocaleString(
-                    "en-IN",
-                  )}
-                </h2>
-              </div>
-            </div>
-          </div>
+      <section className="acc-card">
+        <div className="acc-card-header">
+          <h3 style={{ margin: 0 }}>Material Weekly History</h3>
+          <button className="btn-primary-v5" onClick={createNewMaterialWeekSheet}>
+            Create New Week Sheet
+          </button>
         </div>
-
-        <section
-          className="task-creation-panel"
-          style={{ marginTop: "2.5rem", textAlign: "center" }}
-        >
-          <div className="panel-header-pro">
-            <h3 className="panel-title-pro">Data Entry Sheets</h3>
-            <p className="panel-subtitle-pro">
-              Select a sheet to update daily site records.
-            </p>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: "1.5rem",
-              justifyContent: "center",
-              padding: "1rem",
-              flexWrap: "wrap",
-            }}
-          >
-            <div
-              className="sheet-action-card"
-              onClick={() => navigate(`/accountant/site/${siteId}/labour`)}
-              style={{ cursor: "pointer" }}
-            >
-              <div className="sheet-icon">👷</div>
-              <span className="sheet-label">Labour Sheets</span>
-              <p className="sheet-sub">Daily Mistri/Labour counts</p>
-            </div>
-
-            <div
-              className="sheet-action-card"
-              onClick={() => navigate(`/accountant/site/${siteId}/material`)}
-              style={{ cursor: "pointer" }}
-            >
-              <div className="sheet-icon">🚚</div>
-              <span className="sheet-label">Material Sheet</span>
-              <p className="sheet-sub">Cement, Sand, Steel etc.</p>
-            </div>
-          </div>
-        </section>
-
-        {/* --- DUAL HISTORY TABLES WITH NAVIGATION --- */}
-        <div className="history-section" style={{ marginTop: "3rem" }}>
-          <h3 className="section-heading">Financial History Logs</h3>
-
-          <div
-            className="history-grid-v5"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "2rem",
-              marginTop: "1.5rem",
-            }}
-          >
-            {/* Labour History Table */}
-            <div className="master-section-card">
-              <div className="section-header-v3">
-                <h3 className="section-heading-v3">👷 Labour History</h3>
-              </div>
-              <div className="master-table-container">
-                <table className="master-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: "50px" }}>Sr.</th>
-                      <th>Sheet Name</th>
-                      <th>Week Period</th>
-                      <th>Total Spend</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {labourHistory.map((item, idx) => (
-                      <tr
-                        key={item.weekKey}
-                        onClick={() =>
-                          navigate(
-                            `/accountant/site/${siteId}/labour/${item.weekKey}`,
-                          )
-                        }
-                        style={{ cursor: "pointer" }}
-                      >
-                        <td>{idx + 1}</td>
-                        <td>
-                          <strong>{formatWeekLabel(item.weekKey)}</strong>
-                        </td>
-                        <td style={{ color: "#64748b", fontSize: "0.85rem" }}>
-                          {item.dateRange}
-                        </td>
-                        <td style={{ fontWeight: "800" }}>
-                          ₹ {item.total.toLocaleString("en-IN")}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Material History Table */}
-            <div className="master-section-card">
-              <div className="section-header-v3">
-                <h3 className="section-heading-v3">🚚 Material History</h3>
-              </div>
-              <div className="master-table-container">
-                <table className="master-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: "50px" }}>Sr.</th>
-                      <th>Sheet Name</th>
-                      <th>Week Period</th>
-                      <th>Total Spend</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {materialHistory.map((item, idx) => (
-                      <tr
-                        key={item.weekKey}
-                        onClick={() =>
-                          navigate(`/accountant/site/${siteId}/material`)
-                        }
-                        style={{ cursor: "pointer" }}
-                      >
-                        <td>{idx + 1}</td>
-                        <td>
-                          <strong>{formatWeekLabel(item.weekKey)}</strong>
-                        </td>
-                        <td style={{ color: "#64748b", fontSize: "0.85rem" }}>
-                          {item.dateRange}
-                        </td>
-                        <td style={{ fontWeight: "800" }}>
-                          ₹ {item.total.toLocaleString("en-IN")}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+        <div className="acc-card-body" style={{ paddingTop: 0 }}>
+          <table className="acc-table">
+            <thead>
+              <tr>
+                <th>Week</th>
+                <th className="acc-right">Deliveries</th>
+                <th className="acc-right">Total Bill</th>
+                <th className="acc-right">Total Paid</th>
+                <th className="acc-right">Pending</th>
+              </tr>
+            </thead>
+            <tbody>
+              {materialWeekly.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "center", color: "#64748b" }}>No material entries found.</td>
+                </tr>
+              ) : materialWeekly.map((row) => (
+                <tr
+                  key={row.weekKey}
+                  onClick={() => navigate(`/accountant/site/${siteId}/material/${encodeURIComponent(row.weekKey)}`)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <td>{formatMarathiWeekFromWeekKey(row.weekKey)}</td>
+                  <td className="acc-right">{row.deliveries}</td>
+                  <td className="acc-right">₹ {row.totalBill.toLocaleString("en-IN")}</td>
+                  <td className="acc-right">₹ {row.totalPaid.toLocaleString("en-IN")}</td>
+                  <td className="acc-right">₹ {row.pending.toLocaleString("en-IN")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
-      <style>{`
-        .master-table tr:hover { background-color: #f8fafc; }
-        @media (max-width: 1024px) {
-          .history-grid-v5 { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-    </Layout>
+      </section>
+    </AccountantShell>
   );
 }
-
-export default AccountantSiteDetail;

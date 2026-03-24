@@ -1,0 +1,381 @@
+.acc-shell {
+  min-height: calc(100vh - 64px);
+  display: flex;
+  background: #f8fafc;
+  color: #1e293b;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.acc-sidebar {
+  width: 248px;
+  background: #1e293b;
+  color: #fff;
+  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.acc-logo {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #60a5fa;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 12px;
+}
+
+.acc-user {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+}
+
+.acc-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.acc-nav-item {
+  color: #cbd5e1;
+  text-decoration: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.acc-nav-item:hover,
+.acc-nav-item.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.acc-logout {
+  margin-top: auto;
+  border: 1px solid #334155;
+  background: transparent;
+  color: #f8fafc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.acc-main {
+  flex: 1;
+  min-width: 0;
+  padding: 24px 28px;
+}
+
+.acc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.acc-title {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 800;
+}
+
+.acc-subtitle {
+  margin: 6px 0 0;
+  font-size: 0.88rem;
+  color: #64748b;
+}
+
+.acc-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.acc-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.btn-primary-v5 {
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.btn-primary-v5:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-muted-action {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #1e293b;
+  border-radius: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.task-input-pro-v2,
+.sheet-input-text,
+.sheet-input-num,
+.stage-select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  width: 100%;
+}
+
+.acc-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.acc-card-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.02rem;
+}
+
+.acc-card-body {
+  padding: 14px 16px;
+}
+
+.acc-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.acc-table th {
+  text-align: left;
+  padding: 11px 12px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.86rem;
+  font-weight: 700;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.acc-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.94rem;
+}
+
+.acc-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.acc-right {
+  text-align: right;
+}
+
+.acc-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.acc-tag.inactive {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.acc-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.acc-stat-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.acc-stat-label {
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.acc-stat-value {
+  margin-top: 8px;
+  font-size: 1.46rem;
+  font-weight: 800;
+}
+
+.attendance-week-chip {
+  margin-bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.attendance-filter-grid,
+.attendance-form-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.attendance-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.attendance-label {
+  display: inline-block;
+  margin-bottom: 6px;
+  font-size: 0.82rem;
+  color: #475569;
+  font-weight: 700;
+}
+
+.attendance-status-present {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.attendance-status-absent {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.attendance-status-leave {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.attendance-status-halfday {
+  border-color: #8b5cf6;
+  background: #f5f3ff;
+}
+
+.attendance-action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.attendance-action-row .btn-muted-action {
+  min-height: 38px;
+}
+
+.attendance-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.attendance-pagination .active-page {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.attendance-module .acc-card-header h3 {
+  font-size: 1.14rem;
+  font-weight: 800;
+}
+
+.attendance-module .acc-table th {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.attendance-module .acc-table td {
+  font-size: 1rem;
+}
+
+.acc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 16px;
+}
+
+.acc-modal {
+  width: min(640px, 100%);
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3);
+  padding: 16px;
+}
+
+@media (max-width: 1080px) {
+  .acc-shell {
+    display: block;
+  }
+
+  .acc-sidebar {
+    width: 100%;
+    border-radius: 0;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .acc-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .acc-logout {
+    margin-top: 0;
+    margin-left: auto;
+  }
+
+  .acc-main {
+    padding: 16px;
+  }
+
+  .acc-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-filter-grid,
+  .attendance-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-action-row {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

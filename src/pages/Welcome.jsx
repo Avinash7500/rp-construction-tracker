@@ -21,6 +21,10 @@ function Welcome() {
     return <Navigate to="/engineer" replace />;
   }
 
+  if (role === "ACCOUNTANT") {
+    return <Navigate to="/accountant/dashboard" replace />;
+  }
+
   if (user && !role) {
   toast.error("Your account is not properly configured");
   return <Navigate to="/login" replace />;

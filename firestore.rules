@@ -147,6 +147,27 @@ service cloud.firestore {
       allow read, write: if isAccountant();
     }
 
+    /* ---------- ACCOUNTING: DEALER PAYMENTS ---------- */
+    match /dealer_payments/{paymentId} {
+      allow read, write: if isAdmin();
+      allow read, create, update: if isAccountant();
+      allow delete: if false;
+    }
+
+    /* ---------- ACCOUNTING: ATTENDANCE STAFF ---------- */
+    match /attendance_staff/{personId} {
+      allow read, write: if isAdmin();
+      allow read, create, update: if isAccountant();
+      allow delete: if false;
+    }
+
+    /* ---------- ACCOUNTING: ATTENDANCE RECORDS ---------- */
+    match /attendance_records/{recordId} {
+      allow read, write: if isAdmin();
+      allow read, create, update: if isAccountant();
+      allow delete: if false;
+    }
+
     /* ---------- REPORT SNAPSHOTS ---------- */
     match /reportSnapshots/{weekKey} {
       allow read, create, update, delete: if isAdmin();

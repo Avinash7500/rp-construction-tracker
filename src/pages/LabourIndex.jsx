@@ -209,7 +209,7 @@ function LabourIndex() {
 
             <div className="sheets-grid-v5">
               {displayedTypes.map((type) => (
-                <div key={type} className="sheet-tile-pro" onClick={() => navigate(`/accountant/site/${siteId}/labour/${type}`)}>
+                <div key={type} className="sheet-tile-pro" onClick={() => navigate(`/accountant/site/${siteId}/labour/work/${type}`)}>
                   <div className="tile-icon">📂</div>
                   <span className="tile-label">{type} Sheet</span>
                   <span className="tile-sub">Tap to open</span>

@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { ensureMarathiPdfFont, pdfTextSafe } from "./pdfMarathiFont";
 
 function nowFileStamp() {
   const d = new Date();
@@ -81,72 +82,82 @@ export async function exportSnapshotToPDF(snapshot) {
 
 // 🔥 NEW: Professional Dealer Ledger Export
 export function exportSnapshotPdf(reportData) {
+  if (!reportData) return;
   const doc = new jsPDF();
+  Promise.resolve(ensureMarathiPdfFont(doc)).then((hasMarathiFont) => {
+    const text = (v) => pdfTextSafe(v, hasMarathiFont);
 
-  // Header
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, 220, 25, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.text("R.P. CONSTRUCTION", 105, 12, { align: "center" });
-  doc.setFontSize(10);
-  doc.text("DEALER PAYMENT STATEMENT", 105, 18, { align: "center" });
+    // Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 220, 25, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.text("R.P. CONSTRUCTION", 105, 12, { align: "center" });
+    doc.setFontSize(10);
+    doc.text(text("DEALER PAYMENT STATEMENT"), 105, 18, { align: "center" });
 
-  // Meta Data
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(11);
-  doc.text(`Dealer Name: ${reportData.dealerName}`, 14, 35);
-  doc.text(`Contact: ${reportData.dealerPhone}`, 14, 42);
-  doc.text(`Date: ${new Date().toLocaleDateString("en-IN")}`, 196, 35, {
-    align: "right",
-  });
+    // Meta Data
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    doc.text(text(`Dealer Name: ${reportData.dealerName}`), 14, 35);
+    doc.text(text(`Contact: ${reportData.dealerPhone}`), 14, 42);
+    doc.text(`Date: ${new Date().toLocaleDateString("en-IN")}`, 196, 35, {
+      align: "right",
+    });
 
-  // Summary Table
-  autoTable(doc, {
-    startY: 50,
-    head: [["Total Billed", "Total Paid", "Outstanding Balance"]],
-    body: [
-      [
-        `Rs. ${reportData.summary.billed.toLocaleString("en-IN")}`,
-        `Rs. ${reportData.summary.paid.toLocaleString("en-IN")}`,
-        `Rs. ${(reportData.summary.billed - reportData.summary.paid).toLocaleString("en-IN")}`,
+    // Summary Table
+    autoTable(doc, {
+      startY: 50,
+      head: [[text("Total Billed"), text("Total Paid"), text("Outstanding Balance")]],
+      body: [
+        [
+          `Rs. ${reportData.summary.billed.toLocaleString("en-IN")}`,
+          `Rs. ${reportData.summary.paid.toLocaleString("en-IN")}`,
+          `Rs. ${(reportData.summary.billed - reportData.summary.paid).toLocaleString("en-IN")}`,
+        ],
       ],
-    ],
-    theme: "grid",
-    headStyles: { fillColor: [15, 23, 42], halign: "center" },
-    styles: { halign: "center", fontSize: 11, fontStyle: "bold" },
-  });
+      theme: "grid",
+      headStyles: { fillColor: [15, 23, 42], halign: "center" },
+      styles: {
+        halign: "center",
+        fontSize: 11,
+        fontStyle: "bold",
+        font: hasMarathiFont ? "NotoSansDevanagari" : "helvetica",
+      },
+    });
 
-  // History Table
-  autoTable(doc, {
-    startY: doc.lastAutoTable.finalY + 10,
-    head: [
-      [
-        "Date",
-        "Site Name",
-        "Material Details",
-        "Bill Amt",
-        "Paid Amt",
-        "Balance",
-      ],
-    ],
-    body: reportData.history.map((t) => [
-      t.date,
-      t.site,
-      t.details,
-      t.bill.toLocaleString("en-IN"),
-      t.paid.toLocaleString("en-IN"),
-      t.balance.toLocaleString("en-IN"),
-    ]),
-    headStyles: { fillColor: [37, 99, 235] },
-    styles: { fontSize: 9 },
-    didParseCell: (data) => {
-      // Highlight fully paid rows in light green in PDF
-      if (data.section === "body" && data.row.raw[5] === "0") {
-        data.cell.styles.fillColor = [240, 253, 244];
-      }
-    },
-  });
+    // History Table
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [[
+        text("Date"),
+        text("Site Name"),
+        text("Material Details"),
+        text("Bill Amt"),
+        text("Paid Amt"),
+        text("Balance"),
+      ]],
+      body: reportData.history.map((t) => [
+        text(t.date),
+        text(t.site),
+        text(t.details),
+        t.bill.toLocaleString("en-IN"),
+        t.paid.toLocaleString("en-IN"),
+        t.balance.toLocaleString("en-IN"),
+      ]),
+      headStyles: { fillColor: [37, 99, 235] },
+      styles: {
+        fontSize: 9,
+        font: hasMarathiFont ? "NotoSansDevanagari" : "helvetica",
+        fontStyle: "normal",
+      },
+      didParseCell: (data) => {
+        if (data.section === "body" && data.row.raw[5] === "0") {
+          data.cell.styles.fillColor = [240, 253, 244];
+        }
+      },
+    });
 
-  doc.save(`${reportData.dealerName}_Statement.pdf`);
+    doc.save(`${reportData.dealerName}_Statement.pdf`);
+  });
 }
