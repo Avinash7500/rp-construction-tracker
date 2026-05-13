@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
-import autoTable from "jspdf-autotable";
 import AccountantShell from "../components/AccountantShell";
 import { db } from "../firebase/firebaseConfig";
 import { showError } from "../utils/showError";
-import { formatMarathiWeekFromWeekKey } from "../utils/marathiWeekFormat";
-import { createPdfDoc } from "../utils/pdf/pdfHelper";
-import { generatePdf } from "../utils/pdf/generatePdf";
+import { normalizeMarathiText } from "../utils/textEncoding";
+import { generatePdfReport } from "../utils/pdf/commonPdfGenerator";
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -40,22 +38,43 @@ function materialBill(row) {
   return (row.qty || 0) * (row.rate || 0);
 }
 
-async function exportReportPdf(title, head, body) {
-  const { doc, text } = await createPdfDoc({ unit: "pt" });
-  doc.setFontSize(14);
-  doc.text(text(title), 40, 36);
-  autoTable(doc, {
-    startY: 54,
-    head: [head.map((h) => text(h))],
-    body: body.map((row) => row.map((c) => text(c))),
-    styles: {
-      fontSize: 9,
-      font: "NotoSans",
-      fontStyle: "normal",
-    },
-    headStyles: { fillColor: [37, 99, 235] },
+function exportReportPdf(payloadOrTitle, maybeColumns, maybeRows) {
+  const payload = typeof payloadOrTitle === "object" && payloadOrTitle !== null
+    ? payloadOrTitle
+    : {
+      title: payloadOrTitle,
+      columns: maybeColumns,
+      rows: maybeRows,
+    };
+  const {
+    title = "Accountant Report",
+    columns = [],
+    rows = [],
+    reportType,
+    subtitle,
+    numberColumns,
+  } = payload;
+  const cleanCell = (value) => {
+    if (value === undefined || value === null) return "-";
+    if (typeof value !== "string") return value;
+    const withoutCurrency = value.replace(/₹|â‚¹|Rs\.?\s*/gi, "").trim();
+    return withoutCurrency || "-";
+  };
+  const cleanedRows = (rows || []).map((row) => (
+    Array.isArray(row) ? row.map((cell) => cleanCell(cell)) : row
+  ));
+  const inferredNumeric = (columns || [])
+    .map((label, index) => ({ label: String(label || "").toLowerCase(), index }))
+    .filter((item) => /(total|bill|paid|pending|amount|debit|credit|balance|count|entries|qty|rate)/.test(item.label))
+    .map((item) => item.index);
+  generatePdfReport({
+    title,
+    subtitle,
+    columns,
+    rows: cleanedRows,
+    reportType: reportType || String(title || "report").toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+    numberColumns: (numberColumns && numberColumns.length ? numberColumns : inferredNumeric),
   });
-  doc.save(`${title.replace(/\s+/g, "_").toLowerCase()}.pdf`);
 }
 
 export default function AccountantReports() {
@@ -86,10 +105,26 @@ export default function AccountantReports() {
         getDocs(collection(db, "dealer_payments")),
         getDocs(query(collection(db, "attendance_staff"), orderBy("name", "asc"))),
       ]);
-      setSites(siteSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setSites(siteSnap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          name: normalizeMarathiText(data.name || "") || data.name || "",
+          location: normalizeMarathiText(data.location || "") || data.location || "",
+          assignedEngineerName: normalizeMarathiText(data.assignedEngineerName || "") || data.assignedEngineerName || "",
+        };
+      }));
       setLabour(labourSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setMaterial(materialSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setDealers(dealerSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setDealers(dealerSnap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          name: normalizeMarathiText(data.name || "") || data.name || "",
+        };
+      }));
       setPayments(paymentSnap.docs.map((d) => d.data()));
       setAttendancePeople(attendanceStaffSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (e) {
@@ -109,7 +144,15 @@ export default function AccountantReports() {
         const daySnap = await getDocs(
           query(collection(db, "attendance_records"), where("date", "==", attendanceDate)),
         );
-        const dayRows = daySnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const dayRows = daySnap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            personName: normalizeMarathiText(data.personName || "") || data.personName || "",
+            note: normalizeMarathiText(data.note || "") || data.note || "",
+          };
+        });
         setDailyAttendance(dayRows);
 
         const monthFrom = startOfMonth(attendanceMonth);
@@ -127,12 +170,12 @@ export default function AccountantReports() {
         monthRows.forEach((row) => {
           const key = row.personId || row.personName || "unknown";
           if (!monthlyMap[key]) {
-            monthlyMap[key] = {
-              personId: row.personId || "",
-              name: row.personName || "-",
-              present: 0,
-              absent: 0,
-              leave: 0,
+              monthlyMap[key] = {
+                personId: row.personId || "",
+                name: normalizeMarathiText(row.personName || "") || row.personName || "-",
+                present: 0,
+                absent: 0,
+                leave: 0,
               halfDay: 0,
             };
           }
@@ -151,7 +194,15 @@ export default function AccountantReports() {
             ),
           );
           const personRows = personSnap.docs
-            .map((d) => ({ id: d.id, ...d.data() }))
+            .map((d) => {
+              const data = d.data();
+              return {
+                id: d.id,
+                ...data,
+                personName: normalizeMarathiText(data.personName || "") || data.personName || "",
+                note: normalizeMarathiText(data.note || "") || data.note || "",
+              };
+            })
             .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
           setPersonWiseRows(personRows);
         } else {
@@ -226,7 +277,7 @@ export default function AccountantReports() {
     });
     return Object.values(map)
       .map((row) => ({
-        weekName: formatMarathiWeekFromWeekKey(row.weekKey),
+        weekName: row.weekKey || "-",
         siteName: siteMap[row.siteId]?.name || row.siteId || "-",
         labourTotal: row.labour,
         materialTotal: row.material,
@@ -280,7 +331,6 @@ export default function AccountantReports() {
       subtitle="Financial summary, weekly expenses, dealer dues and material purchases"
       actions={(
         <>
-          <button className="btn-muted-action" onClick={generatePdf}>Generate PDF</button>
           <button className="btn-primary-v5" onClick={loadData}>Refresh</button>
         </>
       )}
@@ -660,3 +710,4 @@ export default function AccountantReports() {
     </AccountantShell>
   );
 }
+

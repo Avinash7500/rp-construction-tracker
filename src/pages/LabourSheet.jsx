@@ -16,8 +16,9 @@ import { db } from "../firebase/firebaseConfig";
 import { showError } from "../utils/showError";
 import { showSuccess } from "../utils/showSuccess";
 import { generateLabourPdf } from "../utils/pdf/labourPdf";
+import { normalizeMarathiText } from "../utils/textEncoding";
 
-const DAY_ROWS = ["à¤¸à¥‹à¤®à¤µà¤¾à¤°", "à¤®à¤‚à¤—à¤³à¤µà¤¾à¤°", "à¤¬à¥à¤§à¤µà¤¾à¤°", "à¤—à¥à¤°à¥à¤µà¤¾à¤°", "à¤¶à¥à¤•à¥à¤°à¤µà¤¾à¤°", "à¤¶à¤¨à¤¿à¤µà¤¾à¤°", "à¤°à¤µà¤¿à¤µà¤¾à¤°"];
+const DAY_ROWS = ["सोमवार", "मंगळवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार", "रविवार"];
 
 function createEmptyRows() {
   return DAY_ROWS.map((dayName) => ({
@@ -75,8 +76,12 @@ export default function LabourSheet() {
       const mapByDay = {};
       snap.docs.forEach((d) => {
         const row = { id: d.id, ...d.data() };
-        mapByDay[row.dayName] = row;
+        const dayName = normalizeMarathiText(row.dayName) || row.dayName;
+        mapByDay[dayName] = { ...row, dayName };
       });
+      // Raw Firestore rows (encoding check)
+      // eslint-disable-next-line no-console
+      console.log("RAW DATA:", snap.docs.map((d) => d.data()));
 
       const merged = DAY_ROWS.map((day) => mapByDay[day] || {
         id: "",
@@ -170,7 +175,7 @@ export default function LabourSheet() {
           siteId,
           weekKey: next,
           workType: "GENERAL",
-          dayName: "à¤¸à¥‹à¤®à¤µà¤¾à¤°",
+          dayName: "सोमवार",
           details: "",
           mistriCount: 0,
           mistriRate: 0,
@@ -238,7 +243,7 @@ export default function LabourSheet() {
   return (
     <AccountantShell
       title={`Labour Weekly Sheet (${effectiveWeekKey})`}
-      subtitle={`${site.name} | à¤®à¤œà¥‚à¤° à¤–à¤°à¥à¤š à¤Ÿà¥à¤°à¥…à¤•à¤¿à¤‚à¤—`}
+      subtitle={`${normalizeMarathiText(site.name || "") || site.name || "-"} | मजूर खर्च ट्रॅकिंग`}
       actions={(
         <>
           <button className="btn-muted-action" onClick={() => navigate(`/accountant/site/${siteId}`)}>
@@ -258,8 +263,8 @@ export default function LabourSheet() {
           <table className="acc-table">
             <thead>
               <tr>
-                <th>à¤µà¤¾à¤°</th>
-                <th>à¤¤à¤ªà¤¶à¥€à¤²</th>
+                <th>वार</th>
+                <th>तपशील</th>
                 <th className="acc-right">Mistri Count</th>
                 <th className="acc-right">Mistri Rate</th>
                 <th className="acc-right">Labour Count</th>
@@ -269,8 +274,8 @@ export default function LabourSheet() {
             </thead>
             <tbody>
               {rows.map((row, idx) => (
-                <tr key={row.dayName}>
-                  <td>{row.dayName}</td>
+                <tr key={`${row.dayName}-${idx}`}>
+                  <td>{normalizeMarathiText(row.dayName) || row.dayName}</td>
                   <td>
                     <input
                       className="sheet-input-text"
@@ -290,14 +295,14 @@ export default function LabourSheet() {
                   <td className="acc-right">
                     <input className="sheet-input-num" type="number" value={row.labourRate || 0} onChange={(e) => updateRow(idx, "labourRate", e.target.value)} />
                   </td>
-                  <td className="acc-right">â‚¹ {rowTotal(row).toLocaleString("en-IN")}</td>
+                  <td className="acc-right">₹ {rowTotal(row).toLocaleString("en-IN")}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
                 <td colSpan={6} className="acc-right" style={{ fontWeight: 800 }}>Weekly Total</td>
-                <td className="acc-right" style={{ fontWeight: 800 }}>â‚¹ {weeklyTotal.toLocaleString("en-IN")}</td>
+                <td className="acc-right" style={{ fontWeight: 800 }}>₹ {weeklyTotal.toLocaleString("en-IN")}</td>
               </tr>
             </tfoot>
           </table>

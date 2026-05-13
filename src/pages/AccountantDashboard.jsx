@@ -10,6 +10,7 @@ import {
 import AccountantShell from "../components/AccountantShell";
 import SkeletonBox from "../components/SkeletonBox";
 import { db } from "../firebase/firebaseConfig";
+import { normalizeMarathiText } from "../utils/textEncoding";
 import { showError } from "../utils/showError";
 import { formatMarathiWeekFromWeekKey } from "../utils/marathiWeekFormat";
 
@@ -161,12 +162,12 @@ export default function AccountantDashboard() {
                     >
                       <td>{idx + 1}</td>
                       <td>
-                        <strong>{site.name || "-"}</strong>
+                        <strong>{normalizeMarathiText(site.name || "") || site.name || "-"}</strong>
                         <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
-                          {site.location || "Location not set"}
+                          {normalizeMarathiText(site.location || "") || site.location || "Location not set"}
                         </div>
                       </td>
-                      <td>{site.assignedEngineerName || "Not assigned"}</td>
+                      <td>{normalizeMarathiText(site.assignedEngineerName || "") || site.assignedEngineerName || "Not assigned"}</td>
                       <td>
                         <span className="acc-tag">
                           {site.status || (site.isActive === false ? "Inactive" : "In Progress")}
@@ -184,3 +185,4 @@ export default function AccountantDashboard() {
     </AccountantShell>
   );
 }
+

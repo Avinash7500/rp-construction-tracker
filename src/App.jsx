@@ -15,6 +15,7 @@ import ProjectEstimate from "./pages/ProjectEstimate";
 import AdminStageSetup from "./pages/AdminStageSetup";
 import EngineerExecutionStages from "./pages/EngineerExecutionStages";
 import ContactDetails from "./pages/ContactDetails";
+import RpInsight from "./pages/RpInsight";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // ✅ Accountant MIS Module Imports
@@ -266,6 +267,15 @@ export default function App() {
         element={
           <ProtectedRoute allowedRoles={["ADMIN", "ENGINEER", "ACCOUNTANT"]}>
             <ContactDetails />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/rp-insight"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "ENGINEER", "ACCOUNTANT"]}>
+            <RpInsight />
           </ProtectedRoute>
         }
       />

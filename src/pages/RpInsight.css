@@ -1,0 +1,346 @@
+.rp-insight-page {
+  --rp-ink: #172033;
+  --rp-muted: #64748b;
+  --rp-border: #d9e2ef;
+  --rp-bg: #f7fafc;
+  --rp-panel: #ffffff;
+  --rp-accent: #2563eb;
+  --rp-success: #059669;
+  --rp-warning: #d97706;
+  --rp-danger: #dc2626;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1180px;
+  margin: 0 auto;
+  color: var(--rp-ink);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.rp-insight-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #172033;
+  color: #fff;
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+
+.rp-insight-topbar h2,
+.rp-panel-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.rp-insight-topbar p,
+.rp-panel-header p {
+  margin: 4px 0 0;
+  color: #cbd5e1;
+  font-size: 0.86rem;
+}
+
+.rp-panel-header p {
+  color: var(--rp-muted);
+}
+
+.rp-panel {
+  background: var(--rp-panel);
+  border: 1px solid var(--rp-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.rp-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--rp-border);
+  padding: 14px 16px;
+}
+
+.rp-upload-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+}
+
+.rp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rp-field span,
+.rp-kicker {
+  color: var(--rp-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.rp-field select,
+.rp-field input,
+.rp-question-input {
+  width: 100%;
+  border: 1px solid var(--rp-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--rp-ink);
+  font: inherit;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.rp-field select:focus,
+.rp-field input:focus,
+.rp-question-input:focus {
+  border-color: var(--rp-accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.rp-primary-button,
+.rp-muted-button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 40px;
+  padding: 9px 14px;
+  white-space: nowrap;
+}
+
+.rp-primary-button {
+  background: var(--rp-accent);
+  color: #fff;
+}
+
+.rp-muted-button {
+  background: #f8fafc;
+  border-color: var(--rp-border);
+  color: var(--rp-ink);
+}
+
+.rp-primary-button:disabled,
+.rp-muted-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.rp-file-strip {
+  display: grid;
+  grid-template-columns: 1.1fr 1.6fr 0.5fr 0.7fr;
+  gap: 12px;
+  border-top: 1px solid var(--rp-border);
+  background: #f8fafc;
+  padding: 12px 16px;
+}
+
+.rp-file-strip > div {
+  min-width: 0;
+}
+
+.rp-file-strip strong {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-status-badge {
+  align-items: center;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  color: #1d4ed8;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  min-height: 26px;
+  padding: 4px 10px;
+  text-transform: uppercase;
+}
+
+.rp-status-badge.indexed {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: var(--rp-success);
+}
+
+.rp-status-badge.processing {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: var(--rp-warning);
+}
+
+.rp-status-badge.failed {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: var(--rp-danger);
+}
+
+.rp-error-line {
+  color: var(--rp-danger);
+  padding: 0 16px 14px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.rp-disabled-state {
+  color: var(--rp-muted);
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 22px 16px;
+}
+
+.rp-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.rp-question-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.rp-question-input {
+  border: 0;
+  border-bottom: 1px solid var(--rp-border);
+  border-radius: 0;
+  min-height: 160px;
+  resize: vertical;
+}
+
+.rp-question-input:focus {
+  box-shadow: none;
+}
+
+.rp-question-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.rp-answer-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.rp-empty-answer {
+  color: var(--rp-muted);
+  padding: 22px 16px;
+  text-align: center;
+}
+
+.rp-answer-item {
+  border-bottom: 1px solid var(--rp-border);
+  padding: 14px 16px;
+}
+
+.rp-answer-item:last-child {
+  border-bottom: 0;
+}
+
+.rp-answer-question {
+  color: var(--rp-muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.rp-answer-main {
+  font-size: 1.08rem;
+  font-weight: 800;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+
+.rp-answer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--rp-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.rp-sources {
+  margin-top: 12px;
+}
+
+.rp-sources summary {
+  color: var(--rp-accent);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.rp-source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rp-source-row {
+  border: 1px solid var(--rp-border);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.rp-source-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--rp-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.rp-source-head span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-source-row p {
+  margin: 8px 0 0;
+  color: var(--rp-ink);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 980px) {
+  .rp-insight-topbar,
+  .rp-panel-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .rp-upload-grid,
+  .rp-workspace,
+  .rp-file-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .rp-question-actions {
+    justify-content: stretch;
+  }
+
+  .rp-question-actions button {
+    flex: 1;
+  }
+}

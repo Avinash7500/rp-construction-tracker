@@ -1,10 +1,8 @@
-import autoTable from "jspdf-autotable";
-import { formatMarathiWeekFromWeekKey } from "../marathiWeekFormat";
 import {
-  buildPdfFileStamp,
-  createPdfDoc,
-  formatCurrency,
-} from "./pdfHelper";
+  formatCurrencyForPdf,
+  generatePdfReport,
+  safeCellValue,
+} from "./commonPdfGenerator";
 
 export async function generateSiteSummaryPdf({
   siteName,
@@ -15,76 +13,65 @@ export async function generateSiteSummaryPdf({
   labourHistory = [],
   materialHistory = [],
 }) {
-  const { doc, text } = await createPdfDoc();
-
-  const weekLabel = formatMarathiWeekFromWeekKey(currentWeekKey);
-  const totalRows = [
-    [text("Overall Labour"), text(formatCurrency(totals.labour || 0))],
-    [text("Overall Material"), text(formatCurrency(totals.material || 0))],
-    [text("Project Grand Total"), text(formatCurrency(totals.grand || 0))],
-  ];
-  const weeklyRows = [
-    [text("Labour Total"), text(formatCurrency(weekly.labour || 0))],
-    [text("Material Total"), text(formatCurrency(weekly.material || 0))],
-    [text("Grand Total (Weekly)"), text(formatCurrency(weekly.grand || 0))],
-  ];
-
-  doc.setFontSize(16);
-  doc.text(text("R.P Construction"), 14, 15);
-  doc.setFontSize(12);
-  doc.text(text("\u0938\u093e\u0907\u091f \u0906\u0930\u094d\u0925\u093f\u0915 \u0938\u093e\u0930\u093e\u0902\u0936"), 14, 22);
-  doc.setFontSize(10);
-  doc.text(text(`Site: ${siteName || "-"}`), 14, 29);
-  doc.text(text(`Engineer: ${engineerName || "-"}`), 14, 34);
-  doc.text(text(`Week: ${weekLabel || currentWeekKey || "-"}`), 14, 39);
-
-  autoTable(doc, {
-    startY: 45,
-    head: [[text("Total Financial Summary"), text("Amount")]],
-    body: totalRows,
-    styles: { font: "NotoSans", fontStyle: "normal", fontSize: 9 },
-    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
-    columnStyles: { 0: { cellWidth: 85 }, 1: { halign: "right" } },
-    margin: { left: 8, right: 8 },
-  });
-
-  autoTable(doc, {
-    startY: (doc.lastAutoTable?.finalY || 70) + 6,
-    head: [[text("Weekly Financial Summary"), text("Amount")]],
-    body: weeklyRows,
-    styles: { font: "NotoSans", fontStyle: "normal", fontSize: 9 },
-    headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255] },
-    columnStyles: { 0: { cellWidth: 85 }, 1: { halign: "right" } },
-    margin: { left: 8, right: 8 },
-  });
-
-  autoTable(doc, {
-    startY: (doc.lastAutoTable?.finalY || 100) + 8,
-    head: [[text("Labour Weekly History"), text("Entries"), text("Total Labour Spend")]],
-    body: labourHistory.map((row) => [
-      text(formatMarathiWeekFromWeekKey(row.weekKey) || row.weekKey || "-"),
-      String(row.totalEntries || 0),
-      text(formatCurrency(row.totalLabourSpend || 0)),
+  const labourWeekMap = labourHistory.reduce((acc, row) => {
+    acc[row.weekKey] = row;
+    return acc;
+  }, {});
+  const materialWeekMap = materialHistory.reduce((acc, row) => {
+    acc[row.weekKey] = row;
+    return acc;
+  }, {});
+  const combinedWeekKeys = Array.from(
+    new Set([
+      ...Object.keys(labourWeekMap),
+      ...Object.keys(materialWeekMap),
     ]),
-    styles: { font: "NotoSans", fontStyle: "normal", fontSize: 8.5 },
-    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255] },
-    margin: { left: 8, right: 8 },
-  });
+  ).sort((a, b) => String(b).localeCompare(String(a)));
 
-  autoTable(doc, {
-    startY: (doc.lastAutoTable?.finalY || 140) + 6,
-    head: [[text("Material Weekly History"), text("Deliveries"), text("Bill"), text("Paid"), text("Pending")]],
-    body: materialHistory.map((row) => [
-      text(formatMarathiWeekFromWeekKey(row.weekKey) || row.weekKey || "-"),
-      String(row.deliveries || 0),
-      text(formatCurrency(row.totalBill || 0)),
-      text(formatCurrency(row.totalPaid || 0)),
-      text(formatCurrency(row.pending || 0)),
-    ]),
-    styles: { font: "NotoSans", fontStyle: "normal", fontSize: 8.5 },
-    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255] },
-    margin: { left: 8, right: 8 },
+  const subtitle = `Site: ${safeCellValue(siteName)} | Engineer: ${safeCellValue(engineerName)} | Current Week: ${safeCellValue(currentWeekKey)} | Total Labour: ${formatCurrencyForPdf(totals.labour)} | Total Material: ${formatCurrencyForPdf(totals.material)} | Grand Total: ${formatCurrencyForPdf(totals.grand)}`;
+  generatePdfReport({
+    title: "Weekly Financial Report",
+    subtitle,
+    reportType: "weekly_report",
+    headerMetaLeft: `Site: ${safeCellValue(siteName)} | Engineer: ${safeCellValue(engineerName)}`,
+    headerMetaRight: `Week: ${safeCellValue(currentWeekKey)}`,
+    summaryCards: [
+      { label: "TOTAL LABOUR SPEND", value: formatCurrencyForPdf(totals.labour || 0) },
+      { label: "TOTAL MATERIAL BILL", value: formatCurrencyForPdf(totals.material || 0) },
+      { label: "GRAND TOTAL", value: formatCurrencyForPdf(totals.grand || 0) },
+      { label: "REPORT STATUS", value: "Verified / Internal" },
+    ],
+    columns: [
+      "Week",
+      "Labour Entries",
+      "Labour Spend",
+      "Material Deliveries",
+      "Material Bill",
+      "Material Paid",
+      "Material Pending",
+    ],
+    rows: combinedWeekKeys.map((weekKey) => {
+      const labourRow = labourWeekMap[weekKey] || {};
+      const materialRow = materialWeekMap[weekKey] || {};
+      return [
+        weekKey || "-",
+        Number(labourRow.totalEntries || 0),
+        formatCurrencyForPdf(labourRow.totalLabourSpend || 0),
+        Number(materialRow.deliveries || 0),
+        formatCurrencyForPdf(materialRow.totalBill || 0),
+        formatCurrencyForPdf(materialRow.totalPaid || 0),
+        formatCurrencyForPdf(materialRow.pending || 0),
+      ];
+    }),
+    numberColumns: [1, 2, 3, 4, 5, 6],
+    columnStyles: {
+      0: { cellWidth: 90 },
+      1: { cellWidth: 75 },
+      2: { cellWidth: 110 },
+      3: { cellWidth: 95 },
+      4: { cellWidth: 110 },
+      5: { cellWidth: 100 },
+      6: { cellWidth: 110 },
+    },
   });
-
-  doc.save(`site_summary_${siteName || "site"}_${buildPdfFileStamp()}.pdf`);
 }

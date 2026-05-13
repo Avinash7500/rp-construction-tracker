@@ -17,6 +17,7 @@ import { db } from "../firebase/firebaseConfig";
 import { showError } from "../utils/showError";
 import { showSuccess } from "../utils/showSuccess";
 import { generateMaterialPdf } from "../utils/pdf/materialPdf";
+import { normalizeMarathiText } from "../utils/textEncoding";
 
 const EMPTY_ROW = () => ({
   id: "",
@@ -77,6 +78,9 @@ export default function MaterialSheet() {
       setPaymentsByEntry(paymentMap);
 
       const materialRows = matSnap.docs.map((d) => ({ id: d.id, ...d.data(), paidAmount: 0 }));
+      // Raw Firestore rows (encoding check)
+      // eslint-disable-next-line no-console
+      console.log("RAW DATA:", matSnap.docs.map((d) => d.data()));
       setRows(materialRows.length ? materialRows : [EMPTY_ROW()]);
     } catch (e) {
       showError(e, "Failed to load material sheet");
@@ -201,7 +205,7 @@ export default function MaterialSheet() {
           siteId,
           weekKey: next,
           workType: "GENERAL",
-          dayName: "à¤¸à¥‹à¤®à¤µà¤¾à¤°",
+          dayName: "सोमवार",
           details: "",
           mistriCount: 0,
           mistriRate: 0,
@@ -275,7 +279,7 @@ export default function MaterialSheet() {
   return (
     <AccountantShell
       title={`Material Weekly Sheet (${targetWeekKey})`}
-      subtitle={`${site.name} | à¤¤à¤¾à¤°à¥€à¤–, à¤¡à¤¿à¤²à¤°, à¤¬à¤¿à¤² à¤†à¤£à¤¿ à¤ªà¥‡à¤®à¥‡à¤‚à¤Ÿ à¤Ÿà¥à¤°à¥…à¤•à¤¿à¤‚à¤—`}
+      subtitle={`${normalizeMarathiText(site.name || "") || site.name || "-"} | तारीख, डिलर, बिल आणि पेमेंट ट्रॅकिंग`}
       actions={(
         <>
           <button className="btn-muted-action" onClick={() => navigate(`/accountant/site/${siteId}`)}>Back</button>
@@ -297,8 +301,8 @@ export default function MaterialSheet() {
           <table className="acc-table">
             <thead>
               <tr>
-                <th>à¤¤à¤¾à¤°à¥€à¤–</th>
-                <th>à¤¤à¤ªà¤¶à¥€à¤²</th>
+                <th>तारीख</th>
+                <th>तपशील</th>
                 <th>Dealer</th>
                 <th className="acc-right">Qty</th>
                 <th className="acc-right">Rate</th>
@@ -336,11 +340,11 @@ export default function MaterialSheet() {
                     <td className="acc-right">
                       <input type="number" value={row.rate || 0} onChange={(e) => updateRow(idx, "rate", e.target.value)} className="sheet-input-num" />
                     </td>
-                    <td className="acc-right">â‚¹ {bill.toLocaleString("en-IN")}</td>
+                    <td className="acc-right">₹ {bill.toLocaleString("en-IN")}</td>
                     <td className="acc-right">
                       <input type="number" value={row.paidAmount || 0} onChange={(e) => updateRow(idx, "paidAmount", e.target.value)} className="sheet-input-num" />
                     </td>
-                    <td className="acc-right">â‚¹ {pending.toLocaleString("en-IN")}</td>
+                    <td className="acc-right">₹ {pending.toLocaleString("en-IN")}</td>
                     <td className="acc-right">
                       <button className="btn-muted-action" onClick={() => removeRow(idx)}>Remove</button>
                     </td>
@@ -355,15 +359,15 @@ export default function MaterialSheet() {
       <section className="acc-grid-3">
         <article className="acc-stat-card">
           <div className="acc-stat-label">Total Bill</div>
-          <div className="acc-stat-value">â‚¹ {totals.totalBill.toLocaleString("en-IN")}</div>
+          <div className="acc-stat-value">₹ {totals.totalBill.toLocaleString("en-IN")}</div>
         </article>
         <article className="acc-stat-card">
           <div className="acc-stat-label">Total Paid</div>
-          <div className="acc-stat-value">â‚¹ {totals.totalPaid.toLocaleString("en-IN")}</div>
+          <div className="acc-stat-value">₹ {totals.totalPaid.toLocaleString("en-IN")}</div>
         </article>
         <article className="acc-stat-card">
           <div className="acc-stat-label">Pending Amount</div>
-          <div className="acc-stat-value">â‚¹ {(totals.totalBill - totals.totalPaid).toLocaleString("en-IN")}</div>
+          <div className="acc-stat-value">₹ {(totals.totalBill - totals.totalPaid).toLocaleString("en-IN")}</div>
         </article>
       </section>
 

@@ -1,11 +1,9 @@
-import autoTable from "jspdf-autotable";
-import { formatMarathiWeekFromWeekKey } from "../marathiWeekFormat";
 import {
-  buildPdfFileStamp,
-  createPdfDoc,
-  formatCurrency,
-  formatDate,
-} from "./pdfHelper";
+  formatCurrencyForPdf,
+  formatDateForPdf,
+  generatePdfReport,
+  safeCellValue,
+} from "./commonPdfGenerator";
 
 export async function generateMaterialPdf({
   siteName,
@@ -13,8 +11,6 @@ export async function generateMaterialPdf({
   engineerName,
   rows = [],
 }) {
-  const { doc, text } = await createPdfDoc();
-
   const mapped = rows.map((row) => {
     const bill =
       typeof row.billAmount === "number"
@@ -23,7 +19,7 @@ export async function generateMaterialPdf({
     const paid = Number(row.paid || row.paidAmount || 0);
     const pending = bill - paid;
     return {
-      date: formatDate(row.date),
+      date: formatDateForPdf(row.date),
       details: row.details || "-",
       dealerName: row.dealerName || "-",
       qty: row.qty || 0,
@@ -37,63 +33,49 @@ export async function generateMaterialPdf({
   const totalBill = mapped.reduce((sum, row) => sum + row.bill, 0);
   const totalPaid = mapped.reduce((sum, row) => sum + row.paid, 0);
   const pending = totalBill - totalPaid;
-  const weekLabel = formatMarathiWeekFromWeekKey(weekKey);
-
-  doc.setFontSize(16);
-  doc.text(text("R.P Construction"), 14, 15);
-  doc.setFontSize(12);
-  doc.text(text("\u0938\u093e\u092e\u0917\u094d\u0930\u0940 \u0938\u093e\u092a\u094d\u0924\u093e\u0939\u093f\u0915 \u0905\u0939\u0935\u093e\u0932"), 14, 22);
-  doc.setFontSize(10);
-  doc.text(text(`Site: ${siteName || "-"}`), 14, 29);
-  doc.text(text(`Week: ${weekLabel || weekKey || "-"}`), 14, 34);
-  doc.text(text(`Engineer: ${engineerName || "-"}`), 14, 39);
-
-  autoTable(doc, {
-    startY: 45,
-    head: [[
-      text("\u0924\u093e\u0930\u0940\u0916"),
-      text("\u0924\u092a\u0936\u0940\u0932"),
-      text("\u0921\u0940\u0932\u0930"),
-      text("\u092a\u094d\u0930\u092e\u093e\u0923"),
-      text("\u0926\u0930"),
-      text("\u090f\u0915\u0942\u0923"),
-      text("\u092a\u0947\u0921"),
-    ]],
-    body: mapped.map((row) => [
-      text(row.date),
-      text(row.details),
-      text(row.dealerName),
-      String(row.qty),
-      text(formatCurrency(row.rate)),
-      text(formatCurrency(row.bill)),
-      text(formatCurrency(row.paid)),
+  const subtitle = `Site: ${safeCellValue(siteName)} | Week: ${safeCellValue(weekKey)} | Engineer: ${safeCellValue(engineerName)} | Bill: ${formatCurrencyForPdf(totalBill)} | Paid: ${formatCurrencyForPdf(totalPaid)} | Balance: ${formatCurrencyForPdf(pending)}`;
+  generatePdfReport({
+    title: "Material Report",
+    subtitle,
+    reportType: "material_report",
+    headerMetaLeft: `Site: ${safeCellValue(siteName)} | Engineer: ${safeCellValue(engineerName)}`,
+    headerMetaRight: `Week: ${safeCellValue(weekKey)}`,
+    summaryCards: [
+      { label: "TOTAL MATERIAL BILL", value: formatCurrencyForPdf(totalBill) },
+      { label: "TOTAL PAID", value: formatCurrencyForPdf(totalPaid) },
+      { label: "PENDING BALANCE", value: formatCurrencyForPdf(pending) },
+      { label: "REPORT STATUS", value: "Verified / Internal" },
+    ],
+    columns: [
+      "Date",
+      "Site",
+      "Material",
+      "Qty",
+      "Rate",
+      "Amount",
+      "Paid",
+      "Balance",
+    ],
+    rows: mapped.map((row) => [
+      row.date,
+      safeCellValue(siteName),
+      row.details,
+      Number(row.qty || 0),
+      formatCurrencyForPdf(row.rate),
+      formatCurrencyForPdf(row.bill),
+      formatCurrencyForPdf(row.paid),
+      formatCurrencyForPdf(row.pending),
     ]),
-    styles: {
-      font: "NotoSans",
-      fontStyle: "normal",
-      fontSize: 9,
-      overflow: "linebreak",
-      cellPadding: 2,
-    },
-    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
+    numberColumns: [3, 4, 5, 6, 7],
     columnStyles: {
-      0: { cellWidth: 22 },
-      1: { cellWidth: 42 },
-      2: { cellWidth: 28 },
-      3: { cellWidth: 16, halign: "right" },
-      4: { cellWidth: 22, halign: "right" },
-      5: { cellWidth: 22, halign: "right" },
-      6: { cellWidth: 22, halign: "right" },
+      0: { cellWidth: 75 },
+      1: { cellWidth: 110 },
+      2: { cellWidth: 180 },
+      3: { cellWidth: 50 },
+      4: { cellWidth: 70 },
+      5: { cellWidth: 80 },
+      6: { cellWidth: 70 },
+      7: { cellWidth: 80 },
     },
-    margin: { left: 8, right: 8 },
   });
-
-  const y = (doc.lastAutoTable?.finalY || 45) + 8;
-  doc.setFontSize(11);
-  doc.text(text(`Total Bill: ${formatCurrency(totalBill)}`), 14, y);
-  doc.text(text(`Total Paid: ${formatCurrency(totalPaid)}`), 14, y + 6);
-  doc.text(text(`Pending: ${formatCurrency(pending)}`), 14, y + 12);
-
-  doc.save(`material_weekly_${siteName || "site"}_${weekKey || "week"}_${buildPdfFileStamp()}.pdf`);
 }

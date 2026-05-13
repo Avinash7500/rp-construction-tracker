@@ -9,6 +9,7 @@ import { showSuccess } from "../utils/showSuccess";
 import SkeletonBox from "../components/SkeletonBox";
 import EmptyState from "../components/EmptyState";
 import { useAuth } from "../context/AuthContext";
+import { isRpInsightEnabled } from "../config/features";
 import "./Admin.css";
 
 import {
@@ -532,6 +533,11 @@ function Admin() {
             <Button className="btn-secondary-header" onClick={() => navigate("/admin/stages")}>
               Stage Setup
             </Button>
+            {isRpInsightEnabled ? (
+              <Button className="btn-secondary-header" onClick={() => navigate("/rp-insight")}>
+                RP Insight
+              </Button>
+            ) : null}
             <Button className="btn-secondary-header" onClick={() => navigate("/admin/reports")}>Analytics</Button>
             <Button className="btn-danger-header" loading={loggingOut} onClick={handleLogout}>Logout</Button>
           </div>

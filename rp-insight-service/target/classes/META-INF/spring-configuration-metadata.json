@@ -1,0 +1,180 @@
+{
+  "groups": [
+    {
+      "name": "rp-insight",
+      "type": "com.rpconstruction.insight.config.RpInsightProperties",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties"
+    },
+    {
+      "name": "rp-insight.ai",
+      "type": "com.rpconstruction.insight.config.RpInsightProperties$Ai",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties",
+      "sourceMethod": "getAi()"
+    },
+    {
+      "name": "rp-insight.ingestion",
+      "type": "com.rpconstruction.insight.config.RpInsightProperties$Ingestion",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties",
+      "sourceMethod": "getIngestion()"
+    },
+    {
+      "name": "rp-insight.ocr",
+      "type": "com.rpconstruction.insight.config.RpInsightProperties$Ocr",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties",
+      "sourceMethod": "getOcr()"
+    },
+    {
+      "name": "rp-insight.parsing",
+      "type": "com.rpconstruction.insight.config.RpInsightProperties$Parsing",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties",
+      "sourceMethod": "getParsing()"
+    },
+    {
+      "name": "rp-insight.retrieval",
+      "type": "com.rpconstruction.insight.config.RpInsightProperties$Retrieval",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties",
+      "sourceMethod": "getRetrieval()"
+    },
+    {
+      "name": "rp-insight.storage",
+      "type": "com.rpconstruction.insight.config.RpInsightProperties$Storage",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties",
+      "sourceMethod": "getStorage()"
+    }
+  ],
+  "properties": [
+    {
+      "name": "rp-insight.ai.embedding-dimensions",
+      "type": "java.lang.Integer",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ai",
+      "defaultValue": 768
+    },
+    {
+      "name": "rp-insight.ai.embedding-model",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ai",
+      "defaultValue": "gemini-embedding-001"
+    },
+    {
+      "name": "rp-insight.ai.gemini-api-key",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ai"
+    },
+    {
+      "name": "rp-insight.ai.gemini-model",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ai",
+      "defaultValue": "gemini-2.5-flash-lite"
+    },
+    {
+      "name": "rp-insight.ai.open-ai-api-key",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ai"
+    },
+    {
+      "name": "rp-insight.ai.open-ai-model",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ai",
+      "defaultValue": "gpt-4o"
+    },
+    {
+      "name": "rp-insight.ai.provider",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ai",
+      "defaultValue": "gemini"
+    },
+    {
+      "name": "rp-insight.ai.temperature",
+      "type": "java.lang.Double",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ai",
+      "defaultValue": 0.1
+    },
+    {
+      "name": "rp-insight.ingestion.async",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ingestion",
+      "defaultValue": true
+    },
+    {
+      "name": "rp-insight.ingestion.chunk-overlap-chars",
+      "type": "java.lang.Integer",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ingestion",
+      "defaultValue": 120
+    },
+    {
+      "name": "rp-insight.ingestion.chunk-target-chars",
+      "type": "java.lang.Integer",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ingestion",
+      "defaultValue": 900
+    },
+    {
+      "name": "rp-insight.ingestion.max-extracted-elements",
+      "type": "java.lang.Integer",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ingestion",
+      "defaultValue": 50000
+    },
+    {
+      "name": "rp-insight.ocr.data-path",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ocr"
+    },
+    {
+      "name": "rp-insight.ocr.dpi",
+      "type": "java.lang.Integer",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ocr",
+      "defaultValue": 220
+    },
+    {
+      "name": "rp-insight.ocr.enabled",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ocr",
+      "defaultValue": false
+    },
+    {
+      "name": "rp-insight.ocr.language",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Ocr",
+      "defaultValue": "eng+hin+mar"
+    },
+    {
+      "name": "rp-insight.parsing.aspose-license-path",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Parsing"
+    },
+    {
+      "name": "rp-insight.retrieval.min-similarity",
+      "type": "java.lang.Double",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Retrieval",
+      "defaultValue": 0.55
+    },
+    {
+      "name": "rp-insight.retrieval.top-k",
+      "type": "java.lang.Integer",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Retrieval",
+      "defaultValue": 5
+    },
+    {
+      "name": "rp-insight.storage.backend",
+      "type": "com.rpconstruction.insight.config.RpInsightProperties$StorageBackend",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Storage",
+      "defaultValue": "local"
+    },
+    {
+      "name": "rp-insight.storage.firebase-bucket",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Storage"
+    },
+    {
+      "name": "rp-insight.storage.firebase-credentials-path",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Storage"
+    },
+    {
+      "name": "rp-insight.storage.local-root",
+      "type": "java.lang.String",
+      "sourceType": "com.rpconstruction.insight.config.RpInsightProperties$Storage",
+      "defaultValue": ".\/data\/rp-insight"
+    }
+  ],
+  "hints": []
+}

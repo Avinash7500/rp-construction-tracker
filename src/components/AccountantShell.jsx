@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase/firebaseConfig";
 import { useAuth } from "../context/AuthContext";
+import { isRpInsightEnabled } from "../config/features";
 import { showError } from "../utils/showError";
 import { showSuccess } from "../utils/showSuccess";
 import "./AccountantShell.css";
@@ -11,8 +12,9 @@ const NAV_ITEMS = [
   { label: "Dashboard", to: "/accountant/dashboard" },
   { label: "Attendance", to: "/accountant/attendance" },
   { label: "Dealers Ledger", to: "/accountant/dealers" },
+  isRpInsightEnabled ? { label: "RP Insight", to: "/rp-insight" } : null,
   { label: "Reports (अहवाल)", to: "/accountant/reports" },
-];
+].filter(Boolean);
 
 export default function AccountantShell({ title, subtitle, actions, children }) {
   const navigate = useNavigate();

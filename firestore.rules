@@ -31,43 +31,80 @@ service cloud.firestore {
       return hasRole("ACCOUNTANT");
     }
 
+    function assignedEngineerForSiteId(siteId) {
+      return exists(/databases/$(database)/documents/sites/$(siteId))
+        && get(/databases/$(database)/documents/sites/$(siteId)).data.assignedEngineerId == uid();
+    }
+
+    function canReadSite(siteId) {
+      return isAdmin()
+        || isAccountant()
+        || (isEngineer() && assignedEngineerForSiteId(siteId));
+    }
+
+    function canReadRpInsightResource() {
+      return isAdmin()
+        || isAccountant()
+        || (
+          isEngineer()
+          && ("siteId" in resource.data)
+          && assignedEngineerForSiteId(resource.data.siteId)
+        );
+    }
+
     /* ---------- USERS ---------- */
     match /users/{userId} {
+
+      // IMPORTANT: allow user to read their own document (fix login circular dependency)
+      allow read: if signedIn() && userId == uid();
+
+      // Admin full access
       allow read, write: if isAdmin();
-      allow read: if (isEngineer() || isAccountant()) && userId == uid();
-      allow update: if isEngineer()
+
+      // Push-token update path for any authenticated user (self only)
+      allow update: if signedIn()
         && userId == uid()
         && request.resource.data.role == resource.data.role
-        && request.resource.data.isActive == resource.data.isActive;
+        && request.resource.data.isActive == resource.data.isActive
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "pushToken",
+          "pushTokens",
+          "pushPermission",
+          "pushTokenUpdatedAt",
+          "updatedAt"
+        ]);
+
       allow create: if signedIn() && userId == uid();
+
       allow delete: if false;
     }
 
     /* ---------- SITES ---------- */
     match /sites/{siteId} {
       allow read, write: if isAdmin();
-      allow read: if isEngineer() && resource.data.assignedEngineerId == uid();
+
+      allow read: if isEngineer()
+        && resource.data.assignedEngineerId == uid();
+
       allow read, update: if isAccountant();
+
       allow create, delete: if false;
     }
 
-    /* ---------- STAGE WORKFLOW (SITE SUBCOLLECTION) ---------- */
+    /* ---------- STAGE WORKFLOW ---------- */
     match /sites/{siteId}/executionStages/{stageId} {
+
       function assignedEngineerForSite() {
         return exists(/databases/$(database)/documents/sites/$(siteId))
           && get(/databases/$(database)/documents/sites/$(siteId)).data.assignedEngineerId == uid();
       }
 
-      // Admin has complete control of workflow orchestration.
       allow read, write: if isAdmin();
 
-      // Accountant can view progress for monitoring/reporting.
       allow read: if isAccountant();
 
-      // Engineer can only access workflow of assigned site.
       allow read: if isEngineer() && assignedEngineerForSite();
 
-      // Engineer can update operational fields only (task updates, progress, delay logs).
       allow update: if isEngineer()
         && assignedEngineerForSite()
         && request.resource.data.stageName == resource.data.stageName
@@ -84,12 +121,12 @@ service cloud.firestore {
         && request.resource.data.variance == resource.data.variance
         && request.resource.data.suggestedMaterials == resource.data.suggestedMaterials;
 
-      // Only admin can create/delete/reorder stage documents.
       allow create, delete: if false;
     }
 
     /* ---------- SITE CONTACT DIRECTORY ---------- */
     match /sites/{siteId}/contacts/{contactId} {
+
       function assignedEngineerForSiteContacts() {
         return exists(/databases/$(database)/documents/sites/$(siteId))
           && get(/databases/$(database)/documents/sites/$(siteId)).data.assignedEngineerId == uid();
@@ -103,45 +140,122 @@ service cloud.firestore {
         || (isEngineer() && assignedEngineerForSiteContacts());
     }
 
+    /* ---------- RP INSIGHT: AI DRAWING METADATA ---------- */
+    match /rpInsightFiles/{fileId} {
+      // Client apps may read file status/metadata only for sites they can access.
+      // Uploads, parsing status, embeddings and source chunks must be written by the backend.
+      allow read: if canReadRpInsightResource();
+      allow create, update, delete: if false;
+    }
+
+    match /rpInsightChats/{chatId} {
+      // Optional backend-written audit/chat history. Do not store raw CAD binaries or vectors here.
+      allow read: if canReadRpInsightResource();
+      allow create, update, delete: if false;
+    }
+
+    match /sites/{siteId}/rpInsightFiles/{fileId} {
+      // Optional site-scoped mirror for frontend status screens.
+      allow read: if canReadSite(siteId);
+      allow create, update, delete: if false;
+    }
+
+    match /sites/{siteId}/rpInsightChats/{chatId} {
+      // Optional site-scoped mirror for frontend chat history.
+      allow read: if canReadSite(siteId);
+      allow create, update, delete: if false;
+    }
+
     /* ---------- TASKS ---------- */
     match /tasks/{taskId} {
+
+      function oldPendingHistory() {
+        return ("pendingHistory" in resource.data && resource.data.pendingHistory is list)
+          ? resource.data.pendingHistory
+          : [];
+      }
+
+      function newPendingHistory() {
+        return ("pendingHistory" in request.resource.data && request.resource.data.pendingHistory is list)
+          ? request.resource.data.pendingHistory
+          : [];
+      }
+
+      function pendingHistoryChanged() {
+        return newPendingHistory() != oldPendingHistory();
+      }
+
+      function validPendingEntry(entry) {
+        return entry is map
+          && entry.keys().hasOnly([
+            "reasonType",
+            "note",
+            "loggedByName",
+            "loggedByUid",
+            "loggedAt"
+          ])
+          && entry.reasonType is string
+          && entry.note is string
+          && entry.loggedByName is string
+          && entry.loggedByUid is string
+          && entry.loggedAt is timestamp;
+      }
+
+      function pendingHistoryAppendOnly() {
+        return !pendingHistoryChanged()
+          || (
+            newPendingHistory().size() == oldPendingHistory().size() + 1
+            && validPendingEntry(newPendingHistory()[newPendingHistory().size() - 1])
+            && newPendingHistory()[newPendingHistory().size() - 1].loggedByUid == uid()
+          );
+      }
+
+      function validLastPendingReasonAt() {
+        return !("lastPendingReasonAt" in request.resource.data)
+          || request.resource.data.lastPendingReasonAt is timestamp;
+      }
+
+      function pendingReasonMetaConsistent() {
+        return !pendingHistoryChanged()
+          || (
+            "lastPendingReasonAt" in request.resource.data
+            && request.resource.data.lastPendingReasonAt is timestamp
+          );
+      }
+
       allow read, write: if isAdmin();
 
-      // Engineer Reports query support:
-      // where("assignedEngineerId", "==", uid()) + orderBy("createdAt")
-      allow read: if isAccountant()
-        || (isEngineer() && resource.data.assignedEngineerId == uid());
+      allow read: if isAccountant();
 
-      // Engineer can create own pending tasks (including carry-forward generated entries).
+      allow read: if isEngineer()
+        && resource.data.assignedEngineerId == uid();
+
       allow create: if isEngineer()
         && request.resource.data.assignedEngineerId == uid()
         && request.resource.data.status == "PENDING"
         && request.resource.data.weekKey is string
-        && request.resource.data.siteId is string
-        && (
-          !("createdBy" in request.resource.data)
-          || request.resource.data.createdBy == "ENGINEER"
-          || request.resource.data.createdBy == "ADMIN"
-        );
+        && request.resource.data.siteId is string;
 
-      // Engineer can update only own tasks; lock ownership and task identity fields.
       allow update: if isEngineer()
         && resource.data.assignedEngineerId == uid()
         && request.resource.data.assignedEngineerId == resource.data.assignedEngineerId
         && request.resource.data.siteId == resource.data.siteId
-        && request.resource.data.weekKey == resource.data.weekKey;
+        && request.resource.data.weekKey == resource.data.weekKey
+        && pendingHistoryAppendOnly()
+        && validLastPendingReasonAt()
+        && pendingReasonMetaConsistent();
 
       allow delete: if false;
     }
 
-    /* ---------- ACCOUNTING: LABOUR ENTRIES ---------- */
+    /* ---------- ACCOUNTING: LABOUR ---------- */
     match /labour_entries/{entryId} {
       allow read, write: if isAdmin();
       allow read, create, update: if isAccountant();
       allow delete: if false;
     }
 
-    /* ---------- ACCOUNTING: MATERIAL ENTRIES ---------- */
+    /* ---------- ACCOUNTING: MATERIAL ---------- */
     match /material_entries/{entryId} {
       allow read, write: if isAdmin();
       allow read, write: if isAccountant();
@@ -173,7 +287,7 @@ service cloud.firestore {
       allow read, create, update, delete: if isAdmin();
     }
 
-    /* ---------- DEALER MASTER REGISTRY ---------- */
+    /* ---------- DEALERS ---------- */
     match /dealers/{dealerId} {
       allow read, write: if isAdmin() || isAccountant();
     }

@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rp-insight-postgres
+    environment:
+      POSTGRES_DB: rp_insight
+      POSTGRES_USER: rp_insight
+      POSTGRES_PASSWORD: rp_insight
+    ports:
+      - "5432:5432"
+    volumes:
+      - rp_insight_pgdata:/var/lib/postgresql/data
+
+volumes:
+  rp_insight_pgdata:

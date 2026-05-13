@@ -10,6 +10,7 @@ import SkeletonBox from "../components/SkeletonBox";
 import EmptyState from "../components/EmptyState";
 import SiteContactsModal from "../components/SiteContactsModal";
 import { useAuth } from "../context/AuthContext";
+import { isRpInsightEnabled } from "../config/features";
 import { carryForwardToNextWeek } from "../services/carryForward";
 import {
   formatMarathiWeekFromDate,
@@ -846,6 +847,14 @@ function Engineer() {
             >
               {showReports ? "Back to Dashboard" : "Engineer Reports"}
             </Button>
+            {isRpInsightEnabled ? (
+              <Button
+                className="btn-muted-action"
+                onClick={() => navigate("/rp-insight")}
+              >
+                RP Insight
+              </Button>
+            ) : null}
             <Button
               className="btn-danger-header"
               loading={loggingOut}
